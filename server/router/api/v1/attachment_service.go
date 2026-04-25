@@ -440,7 +440,8 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 		return errors.Wrap(err, "Failed to find instance storage setting")
 	}
 
-	if instanceStorageSetting.StorageType == storepb.InstanceStorageSetting_LOCAL {
+	switch instanceStorageSetting.StorageType {
+	case storepb.InstanceStorageSetting_LOCAL:
 		filepathTemplate := "assets/{timestamp}_{uuid}_{filename}"
 		if instanceStorageSetting.FilepathTemplate != "" {
 			filepathTemplate = instanceStorageSetting.FilepathTemplate
@@ -479,7 +480,7 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 		create.Reference = internalPath
 		create.Blob = nil
 		create.StorageType = storepb.AttachmentStorageType_LOCAL
-	} else if instanceStorageSetting.StorageType == storepb.InstanceStorageSetting_S3 {
+	case storepb.InstanceStorageSetting_S3:
 		s3Config := instanceStorageSetting.S3Config
 		if s3Config == nil {
 			return errors.Errorf("No activated external storage found")
@@ -515,7 +516,7 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 			},
 		}
 		create.Payload = payload
-	} else if instanceStorageSetting.StorageType == storepb.InstanceStorageSetting_AZURE_BLOB {
+	case storepb.InstanceStorageSetting_AZURE_BLOB:
 		azureBlobConfig := instanceStorageSetting.AzureBlobConfig
 		if azureBlobConfig == nil {
 			return errors.Errorf("No activated external storage found")
@@ -558,8 +559,8 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 }
 
 func (s *APIV1Service) GetAttachmentBlob(attachment *store.Attachment) ([]byte, error) {
-	// For local storage, read the file from the local disk.
-	if attachment.StorageType == storepb.AttachmentStorageType_LOCAL {
+	switch attachment.StorageType {
+	case storepb.AttachmentStorageType_LOCAL:
 		attachmentPath := filepath.FromSlash(attachment.Reference)
 		if !filepath.IsAbs(attachmentPath) {
 			attachmentPath = filepath.Join(s.Profile.Data, attachmentPath)
@@ -578,9 +579,7 @@ func (s *APIV1Service) GetAttachmentBlob(attachment *store.Attachment) ([]byte, 
 			return nil, errors.Wrap(err, "failed to read the file")
 		}
 		return blob, nil
-	}
-	// For S3 storage, download the file from S3.
-	if attachment.StorageType == storepb.AttachmentStorageType_S3 {
+	case storepb.AttachmentStorageType_S3:
 		if attachment.Payload == nil {
 			return nil, errors.New("attachment payload is missing")
 		}
@@ -605,9 +604,7 @@ func (s *APIV1Service) GetAttachmentBlob(attachment *store.Attachment) ([]byte, 
 			return nil, errors.Wrap(err, "failed to get object from S3")
 		}
 		return blob, nil
-	}
-	// For Azure Blob Storage, download the blob from Azure.
-	if attachment.StorageType == storepb.AttachmentStorageType_AZURE_BLOB {
+	case storepb.AttachmentStorageType_AZURE_BLOB:
 		if attachment.Payload == nil {
 			return nil, errors.New("attachment payload is missing")
 		}
@@ -632,9 +629,10 @@ func (s *APIV1Service) GetAttachmentBlob(attachment *store.Attachment) ([]byte, 
 			return nil, errors.Wrap(err, "failed to get object from Azure Blob Storage")
 		}
 		return blob, nil
+	default:
+		// Database storage: return the blob stored on the row.
+		return attachment.Blob, nil
 	}
-	// For database storage, return the blob from the database.
-	return attachment.Blob, nil
 }
 
 var fileKeyPattern = regexp.MustCompile(`\{[a-z]{1,9}\}`)

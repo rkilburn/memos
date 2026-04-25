@@ -133,6 +133,12 @@ func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.
 			}
 		}
 	case storepb.InstanceSettingKey_STORAGE:
+		// Storage credentials (S3 access key secret, Azure Blob account key) are
+		// write-only at the API layer and never echoed back in responses, so the
+		// client cannot round-trip them on update. An empty value from the client
+		// therefore means "leave as-is", not "clear the credential". Backfill from
+		// the persisted setting only when at least one secret was sent empty, so
+		// updates that include the secret avoid the extra DB read.
 		storage := updateSetting.GetStorageSetting()
 		if storage != nil {
 			needsExisting := (storage.S3Config != nil && storage.S3Config.AccessKeySecret == "") ||

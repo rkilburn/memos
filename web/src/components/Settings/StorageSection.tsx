@@ -44,14 +44,9 @@ const StorageSection = () => {
         return false;
       }
     } else if (instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.S3) {
-      // The access key secret is write-only and never returned by the API, so
-      // leaving it blank is allowed when editing an existing S3 configuration
-      // (the server preserves the previously stored secret on update). Require a
-      // secret only when switching from another storage type for the first time.
-      const wasAlreadyS3 = originalSetting.storageType === InstanceSetting_StorageSetting_StorageType.S3;
       if (
         instanceStorageSetting.s3Config?.accessKeyId.length === 0 ||
-        (!wasAlreadyS3 && instanceStorageSetting.s3Config?.accessKeySecret.length === 0) ||
+        instanceStorageSetting.s3Config?.accessKeySecret.length === 0 ||
         instanceStorageSetting.s3Config?.endpoint.length === 0 ||
         instanceStorageSetting.s3Config?.region.length === 0 ||
         instanceStorageSetting.s3Config?.bucket.length === 0
@@ -268,7 +263,7 @@ const StorageSection = () => {
 
       {instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.AZURE_BLOB && (
         <SettingGroup title="Azure Blob Storage Configuration" showSeparator>
-          <SettingRow label={t("setting.storage.azure-account")}>
+          <SettingRow label={t("setting.storage.azure-blob-account")}>
             <Input
               className="w-64"
               value={instanceStorageSetting.azureBlobConfig?.accountName ?? ""}
@@ -276,7 +271,7 @@ const StorageSection = () => {
             />
           </SettingRow>
 
-          <SettingRow label={t("setting.storage.azure-key")}>
+          <SettingRow label={t("setting.storage.azure-blob-key")}>
             <Input
               className="w-64"
               type="password"
@@ -285,7 +280,7 @@ const StorageSection = () => {
             />
           </SettingRow>
 
-          <SettingRow label={t("setting.storage.azure-container")}>
+          <SettingRow label={t("setting.storage.azure-blob-container")}>
             <Input
               className="w-64"
               value={instanceStorageSetting.azureBlobConfig?.container ?? ""}
@@ -293,7 +288,7 @@ const StorageSection = () => {
             />
           </SettingRow>
 
-          <SettingRow label={t("setting.storage.azure-endpoint")}>
+          <SettingRow label={t("setting.storage.azure-blob-endpoint")}>
             <Input
               className="w-64"
               placeholder="https://{account}.blob.core.windows.net"
