@@ -277,7 +277,9 @@ func (s *RSSService) generateRSSFromMemoList(ctx context.Context, memoList []*st
 		if attachments, ok := attachmentsByMemoID[memo.ID]; ok && len(attachments) > 0 {
 			attachment := attachments[0]
 			enclosure := feeds.Enclosure{}
-			if attachment.StorageType == storepb.AttachmentStorageType_EXTERNAL || attachment.StorageType == storepb.AttachmentStorageType_S3 {
+			if attachment.StorageType == storepb.AttachmentStorageType_EXTERNAL ||
+				attachment.StorageType == storepb.AttachmentStorageType_S3 ||
+				attachment.StorageType == storepb.AttachmentStorageType_AZURE_BLOB {
 				enclosure.Url = attachment.Reference
 			} else {
 				enclosure.Url = fmt.Sprintf("%s/file/attachments/%s/%s", baseURL, attachment.UID, attachment.Filename)

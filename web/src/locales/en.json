@@ -552,6 +552,10 @@
     "storage": {
       "accesskey": "Access key",
       "accesskey-placeholder": "Access key / Access ID",
+      "azure-blob-account": "Storage account name",
+      "azure-blob-container": "Container",
+      "azure-blob-endpoint": "Endpoint (optional)",
+      "azure-blob-key": "Storage account key",
       "bucket": "Bucket",
       "bucket-placeholder": "Bucket name",
       "create-a-service": "Create a service",

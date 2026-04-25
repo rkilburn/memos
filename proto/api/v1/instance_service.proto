@@ -133,6 +133,8 @@ message InstanceSetting {
       LOCAL = 2;
       // S3 is the S3 storage type.
       S3 = 3;
+      // AZURE_BLOB is the Azure Blob Storage type.
+      AZURE_BLOB = 4;
     }
     // storage_type is the storage type.
     StorageType storage_type = 1;
@@ -154,6 +156,18 @@ message InstanceSetting {
     }
     // The S3 config.
     S3Config s3_config = 4;
+
+    // Azure Blob Storage configuration.
+    message AzureBlobConfig {
+      string account_name = 1;
+      // account_key is write-only at the API layer; the server uses it to authenticate to Azure.
+      string account_key = 2;
+      string container = 3;
+      // Optional endpoint override. Defaults to https://{account_name}.blob.core.windows.net.
+      string endpoint = 4;
+    }
+    // The Azure Blob Storage config.
+    AzureBlobConfig azure_blob_config = 5;
   }
 
   // Memo-related instance settings and policies.

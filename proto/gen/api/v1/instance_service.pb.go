@@ -153,6 +153,8 @@ const (
 	InstanceSetting_StorageSetting_LOCAL InstanceSetting_StorageSetting_StorageType = 2
 	// S3 is the S3 storage type.
 	InstanceSetting_StorageSetting_S3 InstanceSetting_StorageSetting_StorageType = 3
+	// AZURE_BLOB is the Azure Blob Storage type.
+	InstanceSetting_StorageSetting_AZURE_BLOB InstanceSetting_StorageSetting_StorageType = 4
 )
 
 // Enum value maps for InstanceSetting_StorageSetting_StorageType.
@@ -162,12 +164,14 @@ var (
 		1: "DATABASE",
 		2: "LOCAL",
 		3: "S3",
+		4: "AZURE_BLOB",
 	}
 	InstanceSetting_StorageSetting_StorageType_value = map[string]int32{
 		"STORAGE_TYPE_UNSPECIFIED": 0,
 		"DATABASE":                 1,
 		"LOCAL":                    2,
 		"S3":                       3,
+		"AZURE_BLOB":               4,
 	}
 )
 
@@ -690,9 +694,11 @@ type InstanceSetting_StorageSetting struct {
 	// The max upload size in megabytes.
 	UploadSizeLimitMb int64 `protobuf:"varint,3,opt,name=upload_size_limit_mb,json=uploadSizeLimitMb,proto3" json:"upload_size_limit_mb,omitempty"`
 	// The S3 config.
-	S3Config      *InstanceSetting_StorageSetting_S3Config `protobuf:"bytes,4,opt,name=s3_config,json=s3Config,proto3" json:"s3_config,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	S3Config *InstanceSetting_StorageSetting_S3Config `protobuf:"bytes,4,opt,name=s3_config,json=s3Config,proto3" json:"s3_config,omitempty"`
+	// The Azure Blob Storage config.
+	AzureBlobConfig *InstanceSetting_StorageSetting_AzureBlobConfig `protobuf:"bytes,5,opt,name=azure_blob_config,json=azureBlobConfig,proto3" json:"azure_blob_config,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *InstanceSetting_StorageSetting) Reset() {
@@ -749,6 +755,13 @@ func (x *InstanceSetting_StorageSetting) GetUploadSizeLimitMb() int64 {
 func (x *InstanceSetting_StorageSetting) GetS3Config() *InstanceSetting_StorageSetting_S3Config {
 	if x != nil {
 		return x.S3Config
+	}
+	return nil
+}
+
+func (x *InstanceSetting_StorageSetting) GetAzureBlobConfig() *InstanceSetting_StorageSetting_AzureBlobConfig {
+	if x != nil {
+		return x.AzureBlobConfig
 	}
 	return nil
 }
@@ -1265,6 +1278,77 @@ func (x *InstanceSetting_StorageSetting_S3Config) GetUsePathStyle() bool {
 	return false
 }
 
+// Azure Blob Storage configuration.
+type InstanceSetting_StorageSetting_AzureBlobConfig struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	AccountName string                 `protobuf:"bytes,1,opt,name=account_name,json=accountName,proto3" json:"account_name,omitempty"`
+	// account_key is write-only at the API layer; the server uses it to authenticate to Azure.
+	AccountKey string `protobuf:"bytes,2,opt,name=account_key,json=accountKey,proto3" json:"account_key,omitempty"`
+	Container  string `protobuf:"bytes,3,opt,name=container,proto3" json:"container,omitempty"`
+	// Optional endpoint override. Defaults to https://{account_name}.blob.core.windows.net.
+	Endpoint      string `protobuf:"bytes,4,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InstanceSetting_StorageSetting_AzureBlobConfig) Reset() {
+	*x = InstanceSetting_StorageSetting_AzureBlobConfig{}
+	mi := &file_api_v1_instance_service_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstanceSetting_StorageSetting_AzureBlobConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstanceSetting_StorageSetting_AzureBlobConfig) ProtoMessage() {}
+
+func (x *InstanceSetting_StorageSetting_AzureBlobConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_instance_service_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstanceSetting_StorageSetting_AzureBlobConfig.ProtoReflect.Descriptor instead.
+func (*InstanceSetting_StorageSetting_AzureBlobConfig) Descriptor() ([]byte, []int) {
+	return file_api_v1_instance_service_proto_rawDescGZIP(), []int{2, 1, 1}
+}
+
+func (x *InstanceSetting_StorageSetting_AzureBlobConfig) GetAccountName() string {
+	if x != nil {
+		return x.AccountName
+	}
+	return ""
+}
+
+func (x *InstanceSetting_StorageSetting_AzureBlobConfig) GetAccountKey() string {
+	if x != nil {
+		return x.AccountKey
+	}
+	return ""
+}
+
+func (x *InstanceSetting_StorageSetting_AzureBlobConfig) GetContainer() string {
+	if x != nil {
+		return x.Container
+	}
+	return ""
+}
+
+func (x *InstanceSetting_StorageSetting_AzureBlobConfig) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
 // Email delivery configuration for notifications.
 type InstanceSetting_NotificationSetting_EmailSetting struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1284,7 +1368,7 @@ type InstanceSetting_NotificationSetting_EmailSetting struct {
 
 func (x *InstanceSetting_NotificationSetting_EmailSetting) Reset() {
 	*x = InstanceSetting_NotificationSetting_EmailSetting{}
-	mi := &file_api_v1_instance_service_proto_msgTypes[16]
+	mi := &file_api_v1_instance_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1296,7 +1380,7 @@ func (x *InstanceSetting_NotificationSetting_EmailSetting) String() string {
 func (*InstanceSetting_NotificationSetting_EmailSetting) ProtoMessage() {}
 
 func (x *InstanceSetting_NotificationSetting_EmailSetting) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_instance_service_proto_msgTypes[16]
+	mi := &file_api_v1_instance_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1392,7 +1476,7 @@ const file_api_v1_instance_service_proto_rawDesc = "" +
 	"\x04demo\x18\x03 \x01(\bR\x04demo\x12!\n" +
 	"\finstance_url\x18\x06 \x01(\tR\vinstanceUrl\x12(\n" +
 	"\x05admin\x18\a \x01(\v2\x12.memos.api.v1.UserR\x05admin\"\x1b\n" +
-	"\x19GetInstanceProfileRequest\"\xff\x19\n" +
+	"\x19GetInstanceProfileRequest\"\x8b\x1c\n" +
 	"\x0fInstanceSetting\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12W\n" +
 	"\x0fgeneral_setting\x18\x02 \x01(\v2,.memos.api.v1.InstanceSetting.GeneralSettingH\x00R\x0egeneralSetting\x12W\n" +
@@ -1414,24 +1498,33 @@ const file_api_v1_instance_service_proto_rawDesc = "" +
 	"\rCustomProfile\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x19\n" +
-	"\blogo_url\x18\x03 \x01(\tR\alogoUrl\x1a\xbc\x04\n" +
+	"\blogo_url\x18\x03 \x01(\tR\alogoUrl\x1a\xc8\x06\n" +
 	"\x0eStorageSetting\x12[\n" +
 	"\fstorage_type\x18\x01 \x01(\x0e28.memos.api.v1.InstanceSetting.StorageSetting.StorageTypeR\vstorageType\x12+\n" +
 	"\x11filepath_template\x18\x02 \x01(\tR\x10filepathTemplate\x12/\n" +
 	"\x14upload_size_limit_mb\x18\x03 \x01(\x03R\x11uploadSizeLimitMb\x12R\n" +
-	"\ts3_config\x18\x04 \x01(\v25.memos.api.v1.InstanceSetting.StorageSetting.S3ConfigR\bs3Config\x1a\xcc\x01\n" +
+	"\ts3_config\x18\x04 \x01(\v25.memos.api.v1.InstanceSetting.StorageSetting.S3ConfigR\bs3Config\x12h\n" +
+	"\x11azure_blob_config\x18\x05 \x01(\v2<.memos.api.v1.InstanceSetting.StorageSetting.AzureBlobConfigR\x0fazureBlobConfig\x1a\xcc\x01\n" +
 	"\bS3Config\x12\"\n" +
 	"\raccess_key_id\x18\x01 \x01(\tR\vaccessKeyId\x12*\n" +
 	"\x11access_key_secret\x18\x02 \x01(\tR\x0faccessKeySecret\x12\x1a\n" +
 	"\bendpoint\x18\x03 \x01(\tR\bendpoint\x12\x16\n" +
 	"\x06region\x18\x04 \x01(\tR\x06region\x12\x16\n" +
 	"\x06bucket\x18\x05 \x01(\tR\x06bucket\x12$\n" +
-	"\x0euse_path_style\x18\x06 \x01(\bR\fusePathStyle\"L\n" +
+	"\x0euse_path_style\x18\x06 \x01(\bR\fusePathStyle\x1a\x8f\x01\n" +
+	"\x0fAzureBlobConfig\x12!\n" +
+	"\faccount_name\x18\x01 \x01(\tR\vaccountName\x12\x1f\n" +
+	"\vaccount_key\x18\x02 \x01(\tR\n" +
+	"accountKey\x12\x1c\n" +
+	"\tcontainer\x18\x03 \x01(\tR\tcontainer\x12\x1a\n" +
+	"\bendpoint\x18\x04 \x01(\tR\bendpoint\"\\\n" +
 	"\vStorageType\x12\x1c\n" +
 	"\x18STORAGE_TYPE_UNSPECIFIED\x10\x00\x12\f\n" +
 	"\bDATABASE\x10\x01\x12\t\n" +
 	"\x05LOCAL\x10\x02\x12\x06\n" +
-	"\x02S3\x10\x03\x1a\xd6\x01\n" +
+	"\x02S3\x10\x03\x12\x0e\n" +
+	"\n" +
+	"AZURE_BLOB\x10\x04\x1a\xd6\x01\n" +
 	"\x12MemoRelatedSetting\x127\n" +
 	"\x18display_with_update_time\x18\x02 \x01(\bR\x15displayWithUpdateTime\x120\n" +
 	"\x14content_length_limit\x18\x03 \x01(\x05R\x12contentLengthLimit\x127\n" +
@@ -1513,34 +1606,35 @@ func file_api_v1_instance_service_proto_rawDescGZIP() []byte {
 }
 
 var file_api_v1_instance_service_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_api_v1_instance_service_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_api_v1_instance_service_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_api_v1_instance_service_proto_goTypes = []any{
-	(InstanceSetting_Key)(0),                             // 0: memos.api.v1.InstanceSetting.Key
-	(InstanceSetting_AIProviderType)(0),                  // 1: memos.api.v1.InstanceSetting.AIProviderType
-	(InstanceSetting_StorageSetting_StorageType)(0),      // 2: memos.api.v1.InstanceSetting.StorageSetting.StorageType
-	(*InstanceProfile)(nil),                              // 3: memos.api.v1.InstanceProfile
-	(*GetInstanceProfileRequest)(nil),                    // 4: memos.api.v1.GetInstanceProfileRequest
-	(*InstanceSetting)(nil),                              // 5: memos.api.v1.InstanceSetting
-	(*GetInstanceSettingRequest)(nil),                    // 6: memos.api.v1.GetInstanceSettingRequest
-	(*UpdateInstanceSettingRequest)(nil),                 // 7: memos.api.v1.UpdateInstanceSettingRequest
-	(*InstanceSetting_GeneralSetting)(nil),               // 8: memos.api.v1.InstanceSetting.GeneralSetting
-	(*InstanceSetting_StorageSetting)(nil),               // 9: memos.api.v1.InstanceSetting.StorageSetting
-	(*InstanceSetting_MemoRelatedSetting)(nil),           // 10: memos.api.v1.InstanceSetting.MemoRelatedSetting
-	(*InstanceSetting_TagMetadata)(nil),                  // 11: memos.api.v1.InstanceSetting.TagMetadata
-	(*InstanceSetting_TagsSetting)(nil),                  // 12: memos.api.v1.InstanceSetting.TagsSetting
-	(*InstanceSetting_NotificationSetting)(nil),          // 13: memos.api.v1.InstanceSetting.NotificationSetting
-	(*InstanceSetting_AISetting)(nil),                    // 14: memos.api.v1.InstanceSetting.AISetting
-	(*InstanceSetting_AIProviderConfig)(nil),             // 15: memos.api.v1.InstanceSetting.AIProviderConfig
-	(*InstanceSetting_GeneralSetting_CustomProfile)(nil), // 16: memos.api.v1.InstanceSetting.GeneralSetting.CustomProfile
-	(*InstanceSetting_StorageSetting_S3Config)(nil),      // 17: memos.api.v1.InstanceSetting.StorageSetting.S3Config
-	nil, // 18: memos.api.v1.InstanceSetting.TagsSetting.TagsEntry
-	(*InstanceSetting_NotificationSetting_EmailSetting)(nil), // 19: memos.api.v1.InstanceSetting.NotificationSetting.EmailSetting
-	(*User)(nil),                  // 20: memos.api.v1.User
-	(*fieldmaskpb.FieldMask)(nil), // 21: google.protobuf.FieldMask
-	(*color.Color)(nil),           // 22: google.type.Color
+	(InstanceSetting_Key)(0),                               // 0: memos.api.v1.InstanceSetting.Key
+	(InstanceSetting_AIProviderType)(0),                    // 1: memos.api.v1.InstanceSetting.AIProviderType
+	(InstanceSetting_StorageSetting_StorageType)(0),        // 2: memos.api.v1.InstanceSetting.StorageSetting.StorageType
+	(*InstanceProfile)(nil),                                // 3: memos.api.v1.InstanceProfile
+	(*GetInstanceProfileRequest)(nil),                      // 4: memos.api.v1.GetInstanceProfileRequest
+	(*InstanceSetting)(nil),                                // 5: memos.api.v1.InstanceSetting
+	(*GetInstanceSettingRequest)(nil),                      // 6: memos.api.v1.GetInstanceSettingRequest
+	(*UpdateInstanceSettingRequest)(nil),                   // 7: memos.api.v1.UpdateInstanceSettingRequest
+	(*InstanceSetting_GeneralSetting)(nil),                 // 8: memos.api.v1.InstanceSetting.GeneralSetting
+	(*InstanceSetting_StorageSetting)(nil),                 // 9: memos.api.v1.InstanceSetting.StorageSetting
+	(*InstanceSetting_MemoRelatedSetting)(nil),             // 10: memos.api.v1.InstanceSetting.MemoRelatedSetting
+	(*InstanceSetting_TagMetadata)(nil),                    // 11: memos.api.v1.InstanceSetting.TagMetadata
+	(*InstanceSetting_TagsSetting)(nil),                    // 12: memos.api.v1.InstanceSetting.TagsSetting
+	(*InstanceSetting_NotificationSetting)(nil),            // 13: memos.api.v1.InstanceSetting.NotificationSetting
+	(*InstanceSetting_AISetting)(nil),                      // 14: memos.api.v1.InstanceSetting.AISetting
+	(*InstanceSetting_AIProviderConfig)(nil),               // 15: memos.api.v1.InstanceSetting.AIProviderConfig
+	(*InstanceSetting_GeneralSetting_CustomProfile)(nil),   // 16: memos.api.v1.InstanceSetting.GeneralSetting.CustomProfile
+	(*InstanceSetting_StorageSetting_S3Config)(nil),        // 17: memos.api.v1.InstanceSetting.StorageSetting.S3Config
+	(*InstanceSetting_StorageSetting_AzureBlobConfig)(nil), // 18: memos.api.v1.InstanceSetting.StorageSetting.AzureBlobConfig
+	nil, // 19: memos.api.v1.InstanceSetting.TagsSetting.TagsEntry
+	(*InstanceSetting_NotificationSetting_EmailSetting)(nil), // 20: memos.api.v1.InstanceSetting.NotificationSetting.EmailSetting
+	(*User)(nil),                  // 21: memos.api.v1.User
+	(*fieldmaskpb.FieldMask)(nil), // 22: google.protobuf.FieldMask
+	(*color.Color)(nil),           // 23: google.type.Color
 }
 var file_api_v1_instance_service_proto_depIdxs = []int32{
-	20, // 0: memos.api.v1.InstanceProfile.admin:type_name -> memos.api.v1.User
+	21, // 0: memos.api.v1.InstanceProfile.admin:type_name -> memos.api.v1.User
 	8,  // 1: memos.api.v1.InstanceSetting.general_setting:type_name -> memos.api.v1.InstanceSetting.GeneralSetting
 	9,  // 2: memos.api.v1.InstanceSetting.storage_setting:type_name -> memos.api.v1.InstanceSetting.StorageSetting
 	10, // 3: memos.api.v1.InstanceSetting.memo_related_setting:type_name -> memos.api.v1.InstanceSetting.MemoRelatedSetting
@@ -1548,27 +1642,28 @@ var file_api_v1_instance_service_proto_depIdxs = []int32{
 	13, // 5: memos.api.v1.InstanceSetting.notification_setting:type_name -> memos.api.v1.InstanceSetting.NotificationSetting
 	14, // 6: memos.api.v1.InstanceSetting.ai_setting:type_name -> memos.api.v1.InstanceSetting.AISetting
 	5,  // 7: memos.api.v1.UpdateInstanceSettingRequest.setting:type_name -> memos.api.v1.InstanceSetting
-	21, // 8: memos.api.v1.UpdateInstanceSettingRequest.update_mask:type_name -> google.protobuf.FieldMask
+	22, // 8: memos.api.v1.UpdateInstanceSettingRequest.update_mask:type_name -> google.protobuf.FieldMask
 	16, // 9: memos.api.v1.InstanceSetting.GeneralSetting.custom_profile:type_name -> memos.api.v1.InstanceSetting.GeneralSetting.CustomProfile
 	2,  // 10: memos.api.v1.InstanceSetting.StorageSetting.storage_type:type_name -> memos.api.v1.InstanceSetting.StorageSetting.StorageType
 	17, // 11: memos.api.v1.InstanceSetting.StorageSetting.s3_config:type_name -> memos.api.v1.InstanceSetting.StorageSetting.S3Config
-	22, // 12: memos.api.v1.InstanceSetting.TagMetadata.background_color:type_name -> google.type.Color
-	18, // 13: memos.api.v1.InstanceSetting.TagsSetting.tags:type_name -> memos.api.v1.InstanceSetting.TagsSetting.TagsEntry
-	19, // 14: memos.api.v1.InstanceSetting.NotificationSetting.email:type_name -> memos.api.v1.InstanceSetting.NotificationSetting.EmailSetting
-	15, // 15: memos.api.v1.InstanceSetting.AISetting.providers:type_name -> memos.api.v1.InstanceSetting.AIProviderConfig
-	1,  // 16: memos.api.v1.InstanceSetting.AIProviderConfig.type:type_name -> memos.api.v1.InstanceSetting.AIProviderType
-	11, // 17: memos.api.v1.InstanceSetting.TagsSetting.TagsEntry.value:type_name -> memos.api.v1.InstanceSetting.TagMetadata
-	4,  // 18: memos.api.v1.InstanceService.GetInstanceProfile:input_type -> memos.api.v1.GetInstanceProfileRequest
-	6,  // 19: memos.api.v1.InstanceService.GetInstanceSetting:input_type -> memos.api.v1.GetInstanceSettingRequest
-	7,  // 20: memos.api.v1.InstanceService.UpdateInstanceSetting:input_type -> memos.api.v1.UpdateInstanceSettingRequest
-	3,  // 21: memos.api.v1.InstanceService.GetInstanceProfile:output_type -> memos.api.v1.InstanceProfile
-	5,  // 22: memos.api.v1.InstanceService.GetInstanceSetting:output_type -> memos.api.v1.InstanceSetting
-	5,  // 23: memos.api.v1.InstanceService.UpdateInstanceSetting:output_type -> memos.api.v1.InstanceSetting
-	21, // [21:24] is the sub-list for method output_type
-	18, // [18:21] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	18, // 12: memos.api.v1.InstanceSetting.StorageSetting.azure_blob_config:type_name -> memos.api.v1.InstanceSetting.StorageSetting.AzureBlobConfig
+	23, // 13: memos.api.v1.InstanceSetting.TagMetadata.background_color:type_name -> google.type.Color
+	19, // 14: memos.api.v1.InstanceSetting.TagsSetting.tags:type_name -> memos.api.v1.InstanceSetting.TagsSetting.TagsEntry
+	20, // 15: memos.api.v1.InstanceSetting.NotificationSetting.email:type_name -> memos.api.v1.InstanceSetting.NotificationSetting.EmailSetting
+	15, // 16: memos.api.v1.InstanceSetting.AISetting.providers:type_name -> memos.api.v1.InstanceSetting.AIProviderConfig
+	1,  // 17: memos.api.v1.InstanceSetting.AIProviderConfig.type:type_name -> memos.api.v1.InstanceSetting.AIProviderType
+	11, // 18: memos.api.v1.InstanceSetting.TagsSetting.TagsEntry.value:type_name -> memos.api.v1.InstanceSetting.TagMetadata
+	4,  // 19: memos.api.v1.InstanceService.GetInstanceProfile:input_type -> memos.api.v1.GetInstanceProfileRequest
+	6,  // 20: memos.api.v1.InstanceService.GetInstanceSetting:input_type -> memos.api.v1.GetInstanceSettingRequest
+	7,  // 21: memos.api.v1.InstanceService.UpdateInstanceSetting:input_type -> memos.api.v1.UpdateInstanceSettingRequest
+	3,  // 22: memos.api.v1.InstanceService.GetInstanceProfile:output_type -> memos.api.v1.InstanceProfile
+	5,  // 23: memos.api.v1.InstanceService.GetInstanceSetting:output_type -> memos.api.v1.InstanceSetting
+	5,  // 24: memos.api.v1.InstanceService.UpdateInstanceSetting:output_type -> memos.api.v1.InstanceSetting
+	22, // [22:25] is the sub-list for method output_type
+	19, // [19:22] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_api_v1_instance_service_proto_init() }
@@ -1591,7 +1686,7 @@ func file_api_v1_instance_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_instance_service_proto_rawDesc), len(file_api_v1_instance_service_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   17,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -21,6 +21,7 @@ import (
 
 	"github.com/usememos/memos/internal/motionphoto"
 	"github.com/usememos/memos/internal/profile"
+	"github.com/usememos/memos/internal/storage/azureblob"
 	"github.com/usememos/memos/internal/storage/s3"
 	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/server/auth"
@@ -213,6 +214,13 @@ func (s *FileServerService) serveMediaStream(c *echo.Context, attachment *store.
 		}
 		return c.Redirect(http.StatusTemporaryRedirect, presignURL)
 
+	case storepb.AttachmentStorageType_AZURE_BLOB:
+		presignURL, err := s.getAzureBlobPresignedURL(c.Request().Context(), attachment)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to generate presigned URL").Wrap(err)
+		}
+		return c.Redirect(http.StatusTemporaryRedirect, presignURL)
+
 	default:
 		// Database storage fallback.
 		modTime := time.Unix(attachment.UpdatedTs, 0)
@@ -250,7 +258,7 @@ func (s *FileServerService) serveStaticFile(c *echo.Context, attachment *store.A
 		}
 		http.ServeFile(c.Response(), c.Request(), filePath)
 		return nil
-	case storepb.AttachmentStorageType_S3:
+	case storepb.AttachmentStorageType_S3, storepb.AttachmentStorageType_AZURE_BLOB:
 		reader, err := s.getAttachmentReader(c.Request().Context(), attachment)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get attachment reader").Wrap(err)
@@ -274,6 +282,9 @@ func (s *FileServerService) getAttachmentBlob(attachment *store.Attachment) ([]b
 
 	case storepb.AttachmentStorageType_S3:
 		return s.downloadFromS3(context.Background(), attachment)
+
+	case storepb.AttachmentStorageType_AZURE_BLOB:
+		return s.downloadFromAzureBlob(context.Background(), attachment)
 
 	default:
 		return attachment.Blob, nil
@@ -305,6 +316,17 @@ func (s *FileServerService) getAttachmentReader(ctx context.Context, attachment 
 		reader, err := s3Client.GetObjectStream(ctx, s3Object.Key)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to stream from S3")
+		}
+		return reader, nil
+
+	case storepb.AttachmentStorageType_AZURE_BLOB:
+		client, payload, err := s.createAzureBlobClient(attachment)
+		if err != nil {
+			return nil, err
+		}
+		reader, err := client.GetObjectStream(ctx, payload.Key)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to stream from Azure Blob Storage")
 		}
 		return reader, nil
 
@@ -392,6 +414,57 @@ func (s *FileServerService) getS3PresignedURL(ctx context.Context, attachment *s
 	url, err := client.PresignGetObject(ctx, s3Object.Key)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to presign URL")
+	}
+	return url, nil
+}
+
+// createAzureBlobClient creates an Azure Blob Storage client from attachment payload.
+func (*FileServerService) createAzureBlobClient(attachment *store.Attachment) (*azureblob.Client, *storepb.AttachmentPayload_AzureBlobObject, error) {
+	if attachment.Payload == nil {
+		return nil, nil, errors.New("attachment payload is missing")
+	}
+	payload := attachment.Payload.GetAzureBlobObject()
+	if payload == nil {
+		return nil, nil, errors.New("Azure Blob object payload is missing")
+	}
+	if payload.AzureBlobConfig == nil {
+		return nil, nil, errors.New("Azure Blob Storage config is missing")
+	}
+	if payload.Key == "" {
+		return nil, nil, errors.New("Azure Blob object key is missing")
+	}
+
+	client, err := azureblob.NewClient(context.Background(), payload.AzureBlobConfig)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to create Azure Blob Storage client")
+	}
+	return client, payload, nil
+}
+
+// downloadFromAzureBlob downloads the entire blob from Azure Blob Storage.
+func (s *FileServerService) downloadFromAzureBlob(ctx context.Context, attachment *store.Attachment) ([]byte, error) {
+	client, payload, err := s.createAzureBlobClient(attachment)
+	if err != nil {
+		return nil, err
+	}
+
+	blob, err := client.GetObject(ctx, payload.Key)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to download from Azure Blob Storage")
+	}
+	return blob, nil
+}
+
+// getAzureBlobPresignedURL generates a SAS URL for direct Azure Blob Storage access.
+func (s *FileServerService) getAzureBlobPresignedURL(ctx context.Context, attachment *store.Attachment) (string, error) {
+	client, payload, err := s.createAzureBlobClient(attachment)
+	if err != nil {
+		return "", err
+	}
+
+	url, err := client.PresignGetObject(ctx, payload.Key)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to generate Azure Blob SAS URL")
 	}
 	return url, nil
 }

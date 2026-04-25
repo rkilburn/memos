@@ -32,6 +32,8 @@ const (
 	AttachmentStorageType_S3 AttachmentStorageType = 2
 	// Attachment is stored in an external storage. The reference is a URL.
 	AttachmentStorageType_EXTERNAL AttachmentStorageType = 3
+	// Attachment is stored in Azure Blob Storage.
+	AttachmentStorageType_AZURE_BLOB AttachmentStorageType = 4
 )
 
 // Enum value maps for AttachmentStorageType.
@@ -41,12 +43,14 @@ var (
 		1: "LOCAL",
 		2: "S3",
 		3: "EXTERNAL",
+		4: "AZURE_BLOB",
 	}
 	AttachmentStorageType_value = map[string]int32{
 		"ATTACHMENT_STORAGE_TYPE_UNSPECIFIED": 0,
 		"LOCAL":                               1,
 		"S3":                                  2,
 		"EXTERNAL":                            3,
+		"AZURE_BLOB":                          4,
 	}
 )
 
@@ -259,6 +263,7 @@ type AttachmentPayload struct {
 	// Types that are valid to be assigned to Payload:
 	//
 	//	*AttachmentPayload_S3Object_
+	//	*AttachmentPayload_AzureBlobObject_
 	Payload       isAttachmentPayload_Payload `protobuf_oneof:"payload"`
 	MotionMedia   *MotionMedia                `protobuf:"bytes,10,opt,name=motion_media,json=motionMedia,proto3" json:"motion_media,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -311,6 +316,15 @@ func (x *AttachmentPayload) GetS3Object() *AttachmentPayload_S3Object {
 	return nil
 }
 
+func (x *AttachmentPayload) GetAzureBlobObject() *AttachmentPayload_AzureBlobObject {
+	if x != nil {
+		if x, ok := x.Payload.(*AttachmentPayload_AzureBlobObject_); ok {
+			return x.AzureBlobObject
+		}
+	}
+	return nil
+}
+
 func (x *AttachmentPayload) GetMotionMedia() *MotionMedia {
 	if x != nil {
 		return x.MotionMedia
@@ -326,7 +340,13 @@ type AttachmentPayload_S3Object_ struct {
 	S3Object *AttachmentPayload_S3Object `protobuf:"bytes,1,opt,name=s3_object,json=s3Object,proto3,oneof"`
 }
 
+type AttachmentPayload_AzureBlobObject_ struct {
+	AzureBlobObject *AttachmentPayload_AzureBlobObject `protobuf:"bytes,2,opt,name=azure_blob_object,json=azureBlobObject,proto3,oneof"`
+}
+
 func (*AttachmentPayload_S3Object_) isAttachmentPayload_Payload() {}
+
+func (*AttachmentPayload_AzureBlobObject_) isAttachmentPayload_Payload() {}
 
 type AttachmentPayload_S3Object struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
@@ -391,6 +411,68 @@ func (x *AttachmentPayload_S3Object) GetLastPresignedTime() *timestamppb.Timesta
 	return nil
 }
 
+type AttachmentPayload_AzureBlobObject struct {
+	state           protoimpl.MessageState  `protogen:"open.v1"`
+	AzureBlobConfig *StorageAzureBlobConfig `protobuf:"bytes,1,opt,name=azure_blob_config,json=azureBlobConfig,proto3" json:"azure_blob_config,omitempty"`
+	// key is the Azure blob name.
+	Key string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	// last_presigned_time is the last time the SAS URL was generated.
+	LastPresignedTime *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=last_presigned_time,json=lastPresignedTime,proto3" json:"last_presigned_time,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *AttachmentPayload_AzureBlobObject) Reset() {
+	*x = AttachmentPayload_AzureBlobObject{}
+	mi := &file_store_attachment_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AttachmentPayload_AzureBlobObject) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AttachmentPayload_AzureBlobObject) ProtoMessage() {}
+
+func (x *AttachmentPayload_AzureBlobObject) ProtoReflect() protoreflect.Message {
+	mi := &file_store_attachment_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AttachmentPayload_AzureBlobObject.ProtoReflect.Descriptor instead.
+func (*AttachmentPayload_AzureBlobObject) Descriptor() ([]byte, []int) {
+	return file_store_attachment_proto_rawDescGZIP(), []int{1, 1}
+}
+
+func (x *AttachmentPayload_AzureBlobObject) GetAzureBlobConfig() *StorageAzureBlobConfig {
+	if x != nil {
+		return x.AzureBlobConfig
+	}
+	return nil
+}
+
+func (x *AttachmentPayload_AzureBlobObject) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *AttachmentPayload_AzureBlobObject) GetLastPresignedTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastPresignedTime
+	}
+	return nil
+}
+
 var File_store_attachment_proto protoreflect.FileDescriptor
 
 const file_store_attachment_proto_rawDesc = "" +
@@ -401,21 +483,28 @@ const file_store_attachment_proto_rawDesc = "" +
 	"\x04role\x18\x02 \x01(\x0e2\x1c.memos.store.MotionMediaRoleR\x04role\x12\x19\n" +
 	"\bgroup_id\x18\x03 \x01(\tR\agroupId\x12:\n" +
 	"\x19presentation_timestamp_us\x18\x04 \x01(\x03R\x17presentationTimestampUs\x12,\n" +
-	"\x12has_embedded_video\x18\x05 \x01(\bR\x10hasEmbeddedVideo\"\xc9\x02\n" +
+	"\x12has_embedded_video\x18\x05 \x01(\bR\x10hasEmbeddedVideo\"\xea\x04\n" +
 	"\x11AttachmentPayload\x12F\n" +
-	"\ts3_object\x18\x01 \x01(\v2'.memos.store.AttachmentPayload.S3ObjectH\x00R\bs3Object\x12;\n" +
+	"\ts3_object\x18\x01 \x01(\v2'.memos.store.AttachmentPayload.S3ObjectH\x00R\bs3Object\x12\\\n" +
+	"\x11azure_blob_object\x18\x02 \x01(\v2..memos.store.AttachmentPayload.AzureBlobObjectH\x00R\x0fazureBlobObject\x12;\n" +
 	"\fmotion_media\x18\n" +
 	" \x01(\v2\x18.memos.store.MotionMediaR\vmotionMedia\x1a\xa3\x01\n" +
 	"\bS3Object\x129\n" +
 	"\ts3_config\x18\x01 \x01(\v2\x1c.memos.store.StorageS3ConfigR\bs3Config\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12J\n" +
+	"\x13last_presigned_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x11lastPresignedTime\x1a\xc0\x01\n" +
+	"\x0fAzureBlobObject\x12O\n" +
+	"\x11azure_blob_config\x18\x01 \x01(\v2#.memos.store.StorageAzureBlobConfigR\x0fazureBlobConfig\x12\x10\n" +
+	"\x03key\x18\x02 \x01(\tR\x03key\x12J\n" +
 	"\x13last_presigned_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x11lastPresignedTimeB\t\n" +
-	"\apayload*a\n" +
+	"\apayload*q\n" +
 	"\x15AttachmentStorageType\x12'\n" +
 	"#ATTACHMENT_STORAGE_TYPE_UNSPECIFIED\x10\x00\x12\t\n" +
 	"\x05LOCAL\x10\x01\x12\x06\n" +
 	"\x02S3\x10\x02\x12\f\n" +
-	"\bEXTERNAL\x10\x03*h\n" +
+	"\bEXTERNAL\x10\x03\x12\x0e\n" +
+	"\n" +
+	"AZURE_BLOB\x10\x04*h\n" +
 	"\x11MotionMediaFamily\x12#\n" +
 	"\x1fMOTION_MEDIA_FAMILY_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10APPLE_LIVE_PHOTO\x10\x01\x12\x18\n" +
@@ -440,29 +529,34 @@ func file_store_attachment_proto_rawDescGZIP() []byte {
 }
 
 var file_store_attachment_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_store_attachment_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_store_attachment_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_store_attachment_proto_goTypes = []any{
-	(AttachmentStorageType)(0),         // 0: memos.store.AttachmentStorageType
-	(MotionMediaFamily)(0),             // 1: memos.store.MotionMediaFamily
-	(MotionMediaRole)(0),               // 2: memos.store.MotionMediaRole
-	(*MotionMedia)(nil),                // 3: memos.store.MotionMedia
-	(*AttachmentPayload)(nil),          // 4: memos.store.AttachmentPayload
-	(*AttachmentPayload_S3Object)(nil), // 5: memos.store.AttachmentPayload.S3Object
-	(*StorageS3Config)(nil),            // 6: memos.store.StorageS3Config
-	(*timestamppb.Timestamp)(nil),      // 7: google.protobuf.Timestamp
+	(AttachmentStorageType)(0),                // 0: memos.store.AttachmentStorageType
+	(MotionMediaFamily)(0),                    // 1: memos.store.MotionMediaFamily
+	(MotionMediaRole)(0),                      // 2: memos.store.MotionMediaRole
+	(*MotionMedia)(nil),                       // 3: memos.store.MotionMedia
+	(*AttachmentPayload)(nil),                 // 4: memos.store.AttachmentPayload
+	(*AttachmentPayload_S3Object)(nil),        // 5: memos.store.AttachmentPayload.S3Object
+	(*AttachmentPayload_AzureBlobObject)(nil), // 6: memos.store.AttachmentPayload.AzureBlobObject
+	(*StorageS3Config)(nil),                   // 7: memos.store.StorageS3Config
+	(*timestamppb.Timestamp)(nil),             // 8: google.protobuf.Timestamp
+	(*StorageAzureBlobConfig)(nil),            // 9: memos.store.StorageAzureBlobConfig
 }
 var file_store_attachment_proto_depIdxs = []int32{
 	1, // 0: memos.store.MotionMedia.family:type_name -> memos.store.MotionMediaFamily
 	2, // 1: memos.store.MotionMedia.role:type_name -> memos.store.MotionMediaRole
 	5, // 2: memos.store.AttachmentPayload.s3_object:type_name -> memos.store.AttachmentPayload.S3Object
-	3, // 3: memos.store.AttachmentPayload.motion_media:type_name -> memos.store.MotionMedia
-	6, // 4: memos.store.AttachmentPayload.S3Object.s3_config:type_name -> memos.store.StorageS3Config
-	7, // 5: memos.store.AttachmentPayload.S3Object.last_presigned_time:type_name -> google.protobuf.Timestamp
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	6, // 3: memos.store.AttachmentPayload.azure_blob_object:type_name -> memos.store.AttachmentPayload.AzureBlobObject
+	3, // 4: memos.store.AttachmentPayload.motion_media:type_name -> memos.store.MotionMedia
+	7, // 5: memos.store.AttachmentPayload.S3Object.s3_config:type_name -> memos.store.StorageS3Config
+	8, // 6: memos.store.AttachmentPayload.S3Object.last_presigned_time:type_name -> google.protobuf.Timestamp
+	9, // 7: memos.store.AttachmentPayload.AzureBlobObject.azure_blob_config:type_name -> memos.store.StorageAzureBlobConfig
+	8, // 8: memos.store.AttachmentPayload.AzureBlobObject.last_presigned_time:type_name -> google.protobuf.Timestamp
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_store_attachment_proto_init() }
@@ -473,6 +567,7 @@ func file_store_attachment_proto_init() {
 	file_store_instance_setting_proto_init()
 	file_store_attachment_proto_msgTypes[1].OneofWrappers = []any{
 		(*AttachmentPayload_S3Object_)(nil),
+		(*AttachmentPayload_AzureBlobObject_)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -480,7 +575,7 @@ func file_store_attachment_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_store_attachment_proto_rawDesc), len(file_store_attachment_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
