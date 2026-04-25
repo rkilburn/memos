@@ -26,6 +26,7 @@ import (
 	"github.com/usememos/memos/internal/filter"
 	"github.com/usememos/memos/internal/motionphoto"
 	"github.com/usememos/memos/internal/profile"
+	"github.com/usememos/memos/internal/storage/azureblob"
 	"github.com/usememos/memos/internal/storage/s3"
 	"github.com/usememos/memos/internal/util"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
@@ -423,7 +424,9 @@ func convertAttachmentFromStore(attachment *store.Attachment) *v1pb.Attachment {
 		memoName := fmt.Sprintf("%s%s", MemoNamePrefix, *attachment.MemoUID)
 		attachmentMessage.Memo = &memoName
 	}
-	if attachment.StorageType == storepb.AttachmentStorageType_EXTERNAL || attachment.StorageType == storepb.AttachmentStorageType_S3 {
+	if attachment.StorageType == storepb.AttachmentStorageType_EXTERNAL ||
+		attachment.StorageType == storepb.AttachmentStorageType_S3 ||
+		attachment.StorageType == storepb.AttachmentStorageType_AZURE_BLOB {
 		attachmentMessage.ExternalLink = attachment.Reference
 	}
 
@@ -512,6 +515,43 @@ func SaveAttachmentBlob(ctx context.Context, profile *profile.Profile, stores *s
 			},
 		}
 		create.Payload = payload
+	} else if instanceStorageSetting.StorageType == storepb.InstanceStorageSetting_AZURE_BLOB {
+		azureBlobConfig := instanceStorageSetting.AzureBlobConfig
+		if azureBlobConfig == nil {
+			return errors.Errorf("No activated external storage found")
+		}
+		azureBlobClient, err := azureblob.NewClient(ctx, azureBlobConfig)
+		if err != nil {
+			return errors.Wrap(err, "Failed to create Azure Blob Storage client")
+		}
+
+		filepathTemplate := instanceStorageSetting.FilepathTemplate
+		if !strings.Contains(filepathTemplate, "{filename}") {
+			filepathTemplate = filepath.Join(filepathTemplate, "{filename}")
+		}
+		filepathTemplate = replaceFilenameWithPathTemplate(filepathTemplate, create.Filename)
+		filepathTemplate = filepath.ToSlash(filepathTemplate)
+		key, err := azureBlobClient.UploadObject(ctx, filepathTemplate, create.Type, bytes.NewReader(create.Blob))
+		if err != nil {
+			return errors.Wrap(err, "Failed to upload via Azure Blob Storage client")
+		}
+		presignURL, err := azureBlobClient.PresignGetObject(ctx, key)
+		if err != nil {
+			return errors.Wrap(err, "Failed to presign via Azure Blob Storage client")
+		}
+
+		create.Reference = presignURL
+		create.Blob = nil
+		create.StorageType = storepb.AttachmentStorageType_AZURE_BLOB
+		payload := ensureAttachmentPayload(create.Payload)
+		payload.Payload = &storepb.AttachmentPayload_AzureBlobObject_{
+			AzureBlobObject: &storepb.AttachmentPayload_AzureBlobObject{
+				AzureBlobConfig:   azureBlobConfig,
+				Key:               key,
+				LastPresignedTime: timestamppb.New(time.Now()),
+			},
+		}
+		create.Payload = payload
 	}
 
 	return nil
@@ -563,6 +603,33 @@ func (s *APIV1Service) GetAttachmentBlob(attachment *store.Attachment) ([]byte, 
 		blob, err := s3Client.GetObject(context.Background(), s3Object.Key)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get object from S3")
+		}
+		return blob, nil
+	}
+	// For Azure Blob Storage, download the blob from Azure.
+	if attachment.StorageType == storepb.AttachmentStorageType_AZURE_BLOB {
+		if attachment.Payload == nil {
+			return nil, errors.New("attachment payload is missing")
+		}
+		azureBlobObject := attachment.Payload.GetAzureBlobObject()
+		if azureBlobObject == nil {
+			return nil, errors.New("Azure Blob object payload is missing")
+		}
+		if azureBlobObject.AzureBlobConfig == nil {
+			return nil, errors.New("Azure Blob Storage config is missing")
+		}
+		if azureBlobObject.Key == "" {
+			return nil, errors.New("Azure Blob object key is missing")
+		}
+
+		azureBlobClient, err := azureblob.NewClient(context.Background(), azureBlobObject.AzureBlobConfig)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create Azure Blob Storage client")
+		}
+
+		blob, err := azureBlobClient.GetObject(context.Background(), azureBlobObject.Key)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get object from Azure Blob Storage")
 		}
 		return blob, nil
 	}

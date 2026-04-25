@@ -22,6 +22,7 @@ import (
 	"github.com/usememos/memos/server/router/frontend"
 	mcprouter "github.com/usememos/memos/server/router/mcp"
 	"github.com/usememos/memos/server/router/rss"
+	"github.com/usememos/memos/server/runner/azureblobpresign"
 	"github.com/usememos/memos/server/runner/s3presign"
 	"github.com/usememos/memos/store"
 )
@@ -151,9 +152,10 @@ func (s *Server) startBackgroundRunners(ctx context.Context) {
 	// Create a separate context for each background runner
 	// This allows us to control cancellation for each runner independently
 	s3Context, s3Cancel := context.WithCancel(ctx)
+	azureBlobContext, azureBlobCancel := context.WithCancel(ctx)
 
 	// Store the cancel function so we can properly shut down runners
-	s.backgroundRunnerCancels = append(s.backgroundRunnerCancels, s3Cancel)
+	s.backgroundRunnerCancels = append(s.backgroundRunnerCancels, s3Cancel, azureBlobCancel)
 
 	// Create and start S3 presign runner
 	s3presignRunner := s3presign.NewRunner(s.Store)
@@ -165,6 +167,17 @@ func (s *Server) startBackgroundRunners(ctx context.Context) {
 		defer s.backgroundRunnerWG.Done()
 		s3presignRunner.Run(s3Context)
 		slog.Info("s3presign runner stopped")
+	}()
+
+	// Create and start Azure Blob Storage SAS presign runner
+	azureBlobPresignRunner := azureblobpresign.NewRunner(s.Store)
+	azureBlobPresignRunner.RunOnce(ctx)
+
+	s.backgroundRunnerWG.Add(1)
+	go func() {
+		defer s.backgroundRunnerWG.Done()
+		azureBlobPresignRunner.Run(azureBlobContext)
+		slog.Info("azureblobpresign runner stopped")
 	}()
 
 	slog.Info("background runners started")

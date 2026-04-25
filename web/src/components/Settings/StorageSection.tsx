@@ -12,6 +12,8 @@ import { handleError } from "@/lib/error";
 import {
   InstanceSetting_Key,
   InstanceSetting_StorageSetting,
+  InstanceSetting_StorageSetting_AzureBlobConfig,
+  InstanceSetting_StorageSetting_AzureBlobConfigSchema,
   InstanceSetting_StorageSetting_S3Config,
   InstanceSetting_StorageSetting_S3ConfigSchema,
   InstanceSetting_StorageSetting_StorageType,
@@ -42,12 +44,30 @@ const StorageSection = () => {
         return false;
       }
     } else if (instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.S3) {
+      // The access key secret is write-only and never returned by the API, so
+      // leaving it blank is allowed when editing an existing S3 configuration
+      // (the server preserves the previously stored secret on update). Require a
+      // secret only when switching from another storage type for the first time.
+      const wasAlreadyS3 = originalSetting.storageType === InstanceSetting_StorageSetting_StorageType.S3;
       if (
         instanceStorageSetting.s3Config?.accessKeyId.length === 0 ||
-        instanceStorageSetting.s3Config?.accessKeySecret.length === 0 ||
+        (!wasAlreadyS3 && instanceStorageSetting.s3Config?.accessKeySecret.length === 0) ||
         instanceStorageSetting.s3Config?.endpoint.length === 0 ||
         instanceStorageSetting.s3Config?.region.length === 0 ||
         instanceStorageSetting.s3Config?.bucket.length === 0
+      ) {
+        return false;
+      }
+    } else if (instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.AZURE_BLOB) {
+      // The account key is write-only and never returned by the API, so leaving
+      // it blank is allowed when editing an existing Azure Blob configuration
+      // (the server preserves the previously stored key on update). Require a
+      // key only when switching from another storage type for the first time.
+      const wasAlreadyAzureBlob = originalSetting.storageType === InstanceSetting_StorageSetting_StorageType.AZURE_BLOB;
+      if (
+        !instanceStorageSetting.azureBlobConfig?.accountName ||
+        (!wasAlreadyAzureBlob && !instanceStorageSetting.azureBlobConfig?.accountKey) ||
+        !instanceStorageSetting.azureBlobConfig?.container
       ) {
         return false;
       }
@@ -91,6 +111,24 @@ const StorageSection = () => {
           region: existing?.region ?? "",
           bucket: existing?.bucket ?? "",
           usePathStyle: existing?.usePathStyle ?? false,
+          [field]: value,
+        }),
+      }),
+    );
+  };
+
+  const handleAzureBlobFieldChange = (field: keyof InstanceSetting_StorageSetting_AzureBlobConfig, value: string) => {
+    const existing = instanceStorageSetting.azureBlobConfig;
+    setInstanceStorageSetting(
+      create(InstanceSetting_StorageSettingSchema, {
+        storageType: instanceStorageSetting.storageType,
+        filepathTemplate: instanceStorageSetting.filepathTemplate,
+        uploadSizeLimitMb: instanceStorageSetting.uploadSizeLimitMb,
+        azureBlobConfig: create(InstanceSetting_StorageSetting_AzureBlobConfigSchema, {
+          accountName: existing?.accountName ?? "",
+          accountKey: existing?.accountKey ?? "",
+          container: existing?.container ?? "",
+          endpoint: existing?.endpoint ?? "",
           [field]: value,
         }),
       }),
@@ -148,6 +186,10 @@ const StorageSection = () => {
             <div className="flex items-center space-x-2">
               <RadioGroupItem value={String(InstanceSetting_StorageSetting_StorageType.S3)} id="s3" />
               <Label htmlFor="s3">S3</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value={String(InstanceSetting_StorageSetting_StorageType.AZURE_BLOB)} id="azure-blob" />
+              <Label htmlFor="azure-blob">Azure Blob</Label>
             </div>
           </RadioGroup>
         </div>
@@ -219,6 +261,44 @@ const StorageSection = () => {
             <Switch
               checked={instanceStorageSetting.s3Config?.usePathStyle}
               onCheckedChange={(checked) => handleS3FieldChange("usePathStyle", checked)}
+            />
+          </SettingRow>
+        </SettingGroup>
+      )}
+
+      {instanceStorageSetting.storageType === InstanceSetting_StorageSetting_StorageType.AZURE_BLOB && (
+        <SettingGroup title="Azure Blob Storage Configuration" showSeparator>
+          <SettingRow label={t("setting.storage.azure-account")}>
+            <Input
+              className="w-64"
+              value={instanceStorageSetting.azureBlobConfig?.accountName ?? ""}
+              onChange={(e) => handleAzureBlobFieldChange("accountName", e.target.value)}
+            />
+          </SettingRow>
+
+          <SettingRow label={t("setting.storage.azure-key")}>
+            <Input
+              className="w-64"
+              type="password"
+              value={instanceStorageSetting.azureBlobConfig?.accountKey ?? ""}
+              onChange={(e) => handleAzureBlobFieldChange("accountKey", e.target.value)}
+            />
+          </SettingRow>
+
+          <SettingRow label={t("setting.storage.azure-container")}>
+            <Input
+              className="w-64"
+              value={instanceStorageSetting.azureBlobConfig?.container ?? ""}
+              onChange={(e) => handleAzureBlobFieldChange("container", e.target.value)}
+            />
+          </SettingRow>
+
+          <SettingRow label={t("setting.storage.azure-endpoint")}>
+            <Input
+              className="w-64"
+              placeholder="https://{account}.blob.core.windows.net"
+              value={instanceStorageSetting.azureBlobConfig?.endpoint ?? ""}
+              onChange={(e) => handleAzureBlobFieldChange("endpoint", e.target.value)}
             />
           </SettingRow>
         </SettingGroup>

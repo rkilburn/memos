@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/usememos/memos/internal/base"
+	"github.com/usememos/memos/internal/storage/azureblob"
 	"github.com/usememos/memos/internal/storage/s3"
 	storepb "github.com/usememos/memos/proto/gen/store"
 )
@@ -229,6 +230,35 @@ func (s *Store) DeleteAttachmentStorage(ctx context.Context, attachment *Attachm
 			}
 			if err := s3Client.DeleteObject(ctx, s3ObjectPayload.Key); err != nil {
 				return errors.Wrap(err, "Failed to delete s3 object")
+			}
+			return nil
+		}(); err != nil {
+			return err
+		}
+	} else if attachment.StorageType == storepb.AttachmentStorageType_AZURE_BLOB {
+		if err := func() error {
+			payload := attachment.Payload.GetAzureBlobObject()
+			if payload == nil {
+				return errors.Errorf("No azure blob object found")
+			}
+			instanceStorageSetting, err := s.GetInstanceStorageSetting(ctx)
+			if err != nil {
+				return errors.Wrap(err, "failed to get instance storage setting")
+			}
+			cfg := payload.AzureBlobConfig
+			if cfg == nil {
+				if instanceStorageSetting.AzureBlobConfig == nil {
+					return errors.Errorf("Azure Blob Storage config is not found")
+				}
+				cfg = instanceStorageSetting.AzureBlobConfig
+			}
+
+			client, err := azureblob.NewClient(ctx, cfg)
+			if err != nil {
+				return errors.Wrap(err, "Failed to create Azure Blob Storage client")
+			}
+			if err := client.DeleteObject(ctx, payload.Key); err != nil {
+				return errors.Wrap(err, "Failed to delete azure blob")
 			}
 			return nil
 		}(); err != nil {

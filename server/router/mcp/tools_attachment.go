@@ -51,6 +51,9 @@ func storeAttachmentToJSON(ctx context.Context, stores *store.Store, a *store.At
 	case storepb.AttachmentStorageType_S3:
 		j.StorageType = "S3"
 		j.ExternalLink = a.Reference
+	case storepb.AttachmentStorageType_AZURE_BLOB:
+		j.StorageType = "AZURE_BLOB"
+		j.ExternalLink = a.Reference
 	case storepb.AttachmentStorageType_EXTERNAL:
 		j.StorageType = "EXTERNAL"
 		j.ExternalLink = a.Reference
@@ -81,6 +84,9 @@ func storeAttachmentToJSONWithUsernames(a *store.Attachment, usernamesByID map[i
 		j.StorageType = "LOCAL"
 	case storepb.AttachmentStorageType_S3:
 		j.StorageType = "S3"
+		j.ExternalLink = a.Reference
+	case storepb.AttachmentStorageType_AZURE_BLOB:
+		j.StorageType = "AZURE_BLOB"
 		j.ExternalLink = a.Reference
 	case storepb.AttachmentStorageType_EXTERNAL:
 		j.StorageType = "EXTERNAL"

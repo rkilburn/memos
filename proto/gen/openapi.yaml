@@ -2657,6 +2657,7 @@ components:
                         - DATABASE
                         - LOCAL
                         - S3
+                        - AZURE_BLOB
                     type: string
                     description: storage_type is the storage type.
                     format: enum
@@ -2672,6 +2673,10 @@ components:
                     allOf:
                         - $ref: '#/components/schemas/StorageSetting_S3Config'
                     description: The S3 config.
+                azureBlobConfig:
+                    allOf:
+                        - $ref: '#/components/schemas/StorageSetting_AzureBlobConfig'
+                    description: The Azure Blob Storage config.
             description: Storage configuration settings for instance attachments.
         InstanceSetting_TagMetadata:
             type: object
@@ -3362,6 +3367,20 @@ components:
                         $ref: '#/components/schemas/GoogleProtobufAny'
                     description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
             description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
+        StorageSetting_AzureBlobConfig:
+            type: object
+            properties:
+                accountName:
+                    type: string
+                accountKey:
+                    type: string
+                    description: account_key is write-only at the API layer; the server uses it to authenticate to Azure.
+                container:
+                    type: string
+                endpoint:
+                    type: string
+                    description: Optional endpoint override. Defaults to https://{account_name}.blob.core.windows.net.
+            description: Azure Blob Storage configuration.
         StorageSetting_S3Config:
             type: object
             properties:

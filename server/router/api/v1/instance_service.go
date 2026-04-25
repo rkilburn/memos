@@ -133,10 +133,20 @@ func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.
 			}
 		}
 	case storepb.InstanceSettingKey_STORAGE:
-		if storage := updateSetting.GetStorageSetting(); storage != nil && storage.S3Config != nil && storage.S3Config.AccessKeySecret == "" {
-			existing, err := s.Store.GetInstanceStorageSetting(ctx)
-			if err == nil && existing != nil && existing.S3Config != nil {
-				storage.S3Config.AccessKeySecret = existing.S3Config.AccessKeySecret
+		storage := updateSetting.GetStorageSetting()
+		if storage != nil {
+			needsExisting := (storage.S3Config != nil && storage.S3Config.AccessKeySecret == "") ||
+				(storage.AzureBlobConfig != nil && storage.AzureBlobConfig.AccountKey == "")
+			if needsExisting {
+				existing, err := s.Store.GetInstanceStorageSetting(ctx)
+				if err == nil && existing != nil {
+					if storage.S3Config != nil && storage.S3Config.AccessKeySecret == "" && existing.S3Config != nil {
+						storage.S3Config.AccessKeySecret = existing.S3Config.AccessKeySecret
+					}
+					if storage.AzureBlobConfig != nil && storage.AzureBlobConfig.AccountKey == "" && existing.AzureBlobConfig != nil {
+						storage.AzureBlobConfig.AccountKey = existing.AzureBlobConfig.AccountKey
+					}
+				}
 			}
 		}
 	case storepb.InstanceSettingKey_AI:
@@ -295,6 +305,14 @@ func convertInstanceStorageSettingFromStore(settingpb *storepb.InstanceStorageSe
 			UsePathStyle: settingpb.S3Config.UsePathStyle,
 		}
 	}
+	if settingpb.AzureBlobConfig != nil {
+		setting.AzureBlobConfig = &v1pb.InstanceSetting_StorageSetting_AzureBlobConfig{
+			AccountName: settingpb.AzureBlobConfig.AccountName,
+			// AccountKey is write-only: never returned in responses.
+			Container: settingpb.AzureBlobConfig.Container,
+			Endpoint:  settingpb.AzureBlobConfig.Endpoint,
+		}
+	}
 	return setting
 }
 
@@ -315,6 +333,14 @@ func convertInstanceStorageSettingToStore(setting *v1pb.InstanceSetting_StorageS
 			Region:          setting.S3Config.Region,
 			Bucket:          setting.S3Config.Bucket,
 			UsePathStyle:    setting.S3Config.UsePathStyle,
+		}
+	}
+	if setting.AzureBlobConfig != nil {
+		settingpb.AzureBlobConfig = &storepb.StorageAzureBlobConfig{
+			AccountName: setting.AzureBlobConfig.AccountName,
+			AccountKey:  setting.AzureBlobConfig.AccountKey,
+			Container:   setting.AzureBlobConfig.Container,
+			Endpoint:    setting.AzureBlobConfig.Endpoint,
 		}
 	}
 	return settingpb
