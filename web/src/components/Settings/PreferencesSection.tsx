@@ -1,5 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateUserGeneralSetting } from "@/hooks/useUserQueries";
 import { Visibility } from "@/types/proto/api/v1/memo_service_pb";
@@ -11,7 +12,7 @@ import LocaleSelect from "../LocaleSelect";
 import ThemeSelect from "../ThemeSelect";
 import VisibilityIcon from "../VisibilityIcon";
 import SettingGroup from "./SettingGroup";
-import SettingRow from "./SettingRow";
+import { SettingList, SettingListItem } from "./SettingList";
 import SettingSection from "./SettingSection";
 
 const PreferencesSection = () => {
@@ -58,6 +59,17 @@ const PreferencesSection = () => {
     );
   };
 
+  const handleAlwaysExpandMemoChange = (alwaysExpandMemo: boolean) => {
+    updateUserGeneralSetting(
+      { generalSetting: { alwaysExpandMemo }, updateMask: ["always_expand_memo"] },
+      {
+        onSuccess: () => {
+          refetchSettings();
+        },
+      },
+    );
+  };
+
   // Provide default values if setting is not loaded yet
   const setting: UserSetting_GeneralSetting =
     generalSetting ||
@@ -65,40 +77,59 @@ const PreferencesSection = () => {
       locale: "en",
       memoVisibility: "PRIVATE",
       theme: "system",
+      alwaysExpandMemo: false,
     });
 
   return (
     <SettingSection title={t("setting.preference.label")}>
-      <SettingGroup title={t("common.basic")}>
-        <SettingRow label={t("common.language")}>
-          <LocaleSelect value={setting.locale} onChange={handleLocaleSelectChange} />
-        </SettingRow>
+      <SettingGroup title={t("setting.preference.appearance-title")} description={t("setting.preference.appearance-description")}>
+        <SettingList>
+          <SettingListItem label={t("common.language")} description={t("setting.preference.language-description")}>
+            <LocaleSelect value={setting.locale} onChange={handleLocaleSelectChange} />
+          </SettingListItem>
 
-        <SettingRow label={t("setting.preference.theme")}>
-          <ThemeSelect value={setting.theme} onValueChange={handleThemeChange} />
-        </SettingRow>
+          <SettingListItem label={t("setting.preference.theme")} description={t("setting.preference.theme-description")}>
+            <ThemeSelect value={setting.theme} onValueChange={handleThemeChange} />
+          </SettingListItem>
+
+          <SettingListItem
+            label={t("setting.preference.always-expand-memo")}
+            description={t("setting.preference.always-expand-memo-description")}
+          >
+            <Switch checked={setting.alwaysExpandMemo} onCheckedChange={handleAlwaysExpandMemoChange} />
+          </SettingListItem>
+        </SettingList>
       </SettingGroup>
 
-      <SettingGroup title={t("common.memo")} showSeparator>
-        <SettingRow label={t("setting.preference.default-memo-visibility")}>
-          <Select value={setting.memoVisibility || "PRIVATE"} onValueChange={handleDefaultMemoVisibilityChanged}>
-            <SelectTrigger className="min-w-fit">
-              <div className="flex items-center gap-2">
-                <VisibilityIcon visibility={convertVisibilityFromString(setting.memoVisibility)} />
-                <SelectValue />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {[Visibility.PRIVATE, Visibility.PROTECTED, Visibility.PUBLIC]
-                .map((v) => convertVisibilityToString(v))
-                .map((item) => (
-                  <SelectItem key={item} value={item} className="whitespace-nowrap">
-                    {t(`memo.visibility.${item.toLowerCase() as Lowercase<typeof item>}`)}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-        </SettingRow>
+      <SettingGroup
+        title={t("setting.preference.memo-defaults-title")}
+        description={t("setting.preference.memo-defaults-description")}
+        showSeparator
+      >
+        <SettingList>
+          <SettingListItem
+            label={t("setting.preference.default-memo-visibility")}
+            description={t("setting.preference.default-memo-visibility-description")}
+          >
+            <Select value={setting.memoVisibility || "PRIVATE"} onValueChange={handleDefaultMemoVisibilityChanged}>
+              <SelectTrigger className="min-w-fit">
+                <div className="flex items-center gap-2">
+                  <VisibilityIcon visibility={convertVisibilityFromString(setting.memoVisibility)} />
+                  <SelectValue />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {[Visibility.PRIVATE, Visibility.PROTECTED, Visibility.PUBLIC]
+                  .map((v) => convertVisibilityToString(v))
+                  .map((item) => (
+                    <SelectItem key={item} value={item} className="whitespace-nowrap">
+                      {t(`memo.visibility.${item.toLowerCase() as Lowercase<typeof item>}`)}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </SettingListItem>
+        </SettingList>
       </SettingGroup>
     </SettingSection>
   );
