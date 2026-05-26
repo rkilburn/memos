@@ -910,19 +910,27 @@ func (s *APIV1Service) getContentLengthLimit(ctx context.Context) (int, error) {
 	return int(instanceMemoRelatedSetting.ContentLengthLimit), nil
 }
 
+// Webhook activity type strings sent in the dispatched payload.
+const (
+	activityTypeMemoCreated        = "memos.memo.created"
+	activityTypeMemoUpdated        = "memos.memo.updated"
+	activityTypeMemoDeleted        = "memos.memo.deleted"
+	activityTypeMemoCommentCreated = "memos.memo.comment.created"
+)
+
 // DispatchMemoCreatedWebhook dispatches webhook when memo is created.
 func (s *APIV1Service) DispatchMemoCreatedWebhook(ctx context.Context, memo *v1pb.Memo) error {
-	return s.dispatchMemoRelatedWebhook(ctx, memo, "memos.memo.created")
+	return s.dispatchMemoRelatedWebhook(ctx, memo, activityTypeMemoCreated)
 }
 
 // DispatchMemoUpdatedWebhook dispatches webhook when memo is updated.
 func (s *APIV1Service) DispatchMemoUpdatedWebhook(ctx context.Context, memo *v1pb.Memo) error {
-	return s.dispatchMemoRelatedWebhook(ctx, memo, "memos.memo.updated")
+	return s.dispatchMemoRelatedWebhook(ctx, memo, activityTypeMemoUpdated)
 }
 
 // DispatchMemoDeletedWebhook dispatches webhook when memo is deleted.
 func (s *APIV1Service) DispatchMemoDeletedWebhook(ctx context.Context, memo *v1pb.Memo) error {
-	return s.dispatchMemoRelatedWebhook(ctx, memo, "memos.memo.deleted")
+	return s.dispatchMemoRelatedWebhook(ctx, memo, activityTypeMemoDeleted)
 }
 
 // DispatchMemoCommentCreatedWebhook dispatches webhook to the related memo owner when a comment is created.
@@ -931,13 +939,12 @@ func (s *APIV1Service) DispatchMemoCommentCreatedWebhook(ctx context.Context, co
 	if err != nil {
 		return err
 	}
-	const activityType = "memos.memo.comment.created"
 	for _, hook := range webhooks {
 		matched, err := s.webhookMemoFilterMatches(ctx, hook.MemoFilter, commentMemo)
 		if err != nil {
 			slog.Warn("Skipping webhook because filter evaluation failed",
 				slog.String("url", hook.Url),
-				slog.String("activityType", activityType),
+				slog.String("activityType", activityTypeMemoCommentCreated),
 				slog.Any("err", err))
 			continue
 		}
@@ -948,7 +955,7 @@ func (s *APIV1Service) DispatchMemoCommentCreatedWebhook(ctx context.Context, co
 		if err != nil {
 			return errors.Wrap(err, "failed to convert memo to webhook payload")
 		}
-		payload.ActivityType = activityType
+		payload.ActivityType = activityTypeMemoCommentCreated
 		payload.URL = hook.Url
 		webhook.PostAsync(payload)
 	}
