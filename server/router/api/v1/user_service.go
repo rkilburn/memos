@@ -1048,9 +1048,10 @@ func (s *APIV1Service) CreateUserWebhook(ctx context.Context, request *v1pb.Crea
 
 	webhookID := generateUserWebhookID()
 	webhook := &storepb.WebhooksUserSetting_Webhook{
-		Id:    webhookID,
-		Title: request.Webhook.DisplayName,
-		Url:   strings.TrimSpace(request.Webhook.Url),
+		Id:     webhookID,
+		Title:  request.Webhook.DisplayName,
+		Url:    strings.TrimSpace(request.Webhook.Url),
+		Filter: convertUserWebhookFilterToStore(request.Webhook.Filter),
 	}
 
 	err = s.Store.AddUserWebhook(ctx, userID, webhook)
@@ -1104,9 +1105,10 @@ func (s *APIV1Service) UpdateUserWebhook(ctx context.Context, request *v1pb.Upda
 
 	// Update the webhook
 	updatedWebhook := &storepb.WebhooksUserSetting_Webhook{
-		Id:    webhookID,
-		Title: targetWebhook.Title,
-		Url:   targetWebhook.Url,
+		Id:     webhookID,
+		Title:  targetWebhook.Title,
+		Url:    targetWebhook.Url,
+		Filter: targetWebhook.Filter,
 	}
 
 	if request.UpdateMask != nil {
@@ -1122,6 +1124,8 @@ func (s *APIV1Service) UpdateUserWebhook(ctx context.Context, request *v1pb.Upda
 				}
 			case "display_name":
 				updatedWebhook.Title = request.Webhook.DisplayName
+			case "filter":
+				updatedWebhook.Filter = convertUserWebhookFilterToStore(request.Webhook.Filter)
 			default:
 				// Ignore unsupported fields
 			}
@@ -1136,6 +1140,7 @@ func (s *APIV1Service) UpdateUserWebhook(ctx context.Context, request *v1pb.Upda
 			updatedWebhook.Url = trimmed
 		}
 		updatedWebhook.Title = request.Webhook.DisplayName
+		updatedWebhook.Filter = convertUserWebhookFilterToStore(request.Webhook.Filter)
 	}
 
 	err = s.Store.UpdateUserWebhook(ctx, userID, updatedWebhook)
@@ -1206,8 +1211,33 @@ func convertUserWebhookFromUserSetting(webhook *storepb.WebhooksUserSetting_Webh
 		Name:        fmt.Sprintf("%s/webhooks/%s", BuildUserName(user.Username), webhook.Id),
 		Url:         webhook.Url,
 		DisplayName: webhook.Title,
+		Filter:      convertUserWebhookFilterFromStore(webhook.Filter),
 		// Note: create_time and update_time are not available in the user setting webhook structure
 		// This is a limitation of storing webhooks in user settings vs the dedicated webhook table
+	}
+}
+
+// convertUserWebhookFilterToStore converts an API filter into its store equivalent.
+func convertUserWebhookFilterToStore(filter *v1pb.UserWebhook_Filter) *storepb.WebhooksUserSetting_Webhook_Filter {
+	if filter == nil {
+		return nil
+	}
+	return &storepb.WebhooksUserSetting_Webhook_Filter{
+		ActivityTypes: filter.ActivityTypes,
+		Visibilities:  filter.Visibilities,
+		Tags:          filter.Tags,
+	}
+}
+
+// convertUserWebhookFilterFromStore converts a store filter into its API equivalent.
+func convertUserWebhookFilterFromStore(filter *storepb.WebhooksUserSetting_Webhook_Filter) *v1pb.UserWebhook_Filter {
+	if filter == nil {
+		return nil
+	}
+	return &v1pb.UserWebhook_Filter{
+		ActivityTypes: filter.ActivityTypes,
+		Visibilities:  filter.Visibilities,
+		Tags:          filter.Tags,
 	}
 }
 

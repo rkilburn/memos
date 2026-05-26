@@ -5,6 +5,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -931,12 +932,16 @@ func (s *APIV1Service) DispatchMemoCommentCreatedWebhook(ctx context.Context, co
 	if err != nil {
 		return err
 	}
+	const activityType = "memos.memo.comment.created"
 	for _, hook := range webhooks {
+		if !webhookMatchesFilter(hook.Filter, activityType, commentMemo) {
+			continue
+		}
 		payload, err := convertMemoToWebhookPayload(commentMemo)
 		if err != nil {
 			return errors.Wrap(err, "failed to convert memo to webhook payload")
 		}
-		payload.ActivityType = "memos.memo.comment.created"
+		payload.ActivityType = activityType
 		payload.URL = hook.Url
 		webhook.PostAsync(payload)
 	}
@@ -957,6 +962,9 @@ func (s *APIV1Service) dispatchMemoRelatedWebhook(ctx context.Context, memo *v1p
 		return err
 	}
 	for _, hook := range webhooks {
+		if !webhookMatchesFilter(hook.Filter, activityType, memo) {
+			continue
+		}
 		payload, err := convertMemoToWebhookPayload(memo)
 		if err != nil {
 			return errors.Wrap(err, "failed to convert memo to webhook payload")
@@ -968,6 +976,42 @@ func (s *APIV1Service) dispatchMemoRelatedWebhook(ctx context.Context, memo *v1p
 		webhook.PostAsync(payload)
 	}
 	return nil
+}
+
+// webhookMatchesFilter reports whether a webhook should fire for the given event.
+// An unset filter (or unset/empty dimension within the filter) is treated as
+// "no constraint" on that dimension.
+func webhookMatchesFilter(filter *storepb.WebhooksUserSetting_Webhook_Filter, activityType string, memo *v1pb.Memo) bool {
+	if filter == nil {
+		return true
+	}
+	if len(filter.ActivityTypes) > 0 && !slices.Contains(filter.ActivityTypes, activityType) {
+		return false
+	}
+	if len(filter.Visibilities) > 0 {
+		visibility := ""
+		if memo != nil {
+			visibility = memo.Visibility.String()
+		}
+		if !slices.Contains(filter.Visibilities, visibility) {
+			return false
+		}
+	}
+	if len(filter.Tags) > 0 {
+		matched := false
+		if memo != nil {
+			for _, t := range memo.Tags {
+				if slices.Contains(filter.Tags, t) {
+					matched = true
+					break
+				}
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	return true
 }
 
 func convertMemoToWebhookPayload(memo *v1pb.Memo) (*webhook.WebhookRequestPayload, error) {

@@ -1,4 +1,4 @@
-import { PlusIcon, TrashIcon } from "lucide-react";
+import { PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -12,11 +12,29 @@ import LearnMore from "../LearnMore";
 import SettingSection from "./SettingSection";
 import SettingTable from "./SettingTable";
 
+const summarizeFilter = (webhook: UserWebhook, allEventsLabel: string): string => {
+  const parts: string[] = [];
+  const activityTypes = webhook.filter?.activityTypes ?? [];
+  const visibilities = webhook.filter?.visibilities ?? [];
+  const tags = webhook.filter?.tags ?? [];
+  if (activityTypes.length > 0) {
+    parts.push(activityTypes.map((a) => a.replace("memos.memo.", "")).join(", "));
+  }
+  if (visibilities.length > 0) {
+    parts.push(visibilities.join(", "));
+  }
+  if (tags.length > 0) {
+    parts.push(tags.map((tag) => `#${tag}`).join(", "));
+  }
+  return parts.length === 0 ? allEventsLabel : parts.join(" · ");
+};
+
 const WebhookSection = () => {
   const t = useTranslate();
   const currentUser = useCurrentUser();
   const [webhooks, setWebhooks] = useState<UserWebhook[]>([]);
   const [isCreateWebhookDialogOpen, setIsCreateWebhookDialogOpen] = useState(false);
+  const [editTargetName, setEditTargetName] = useState<string | undefined>(undefined);
   const [deleteTarget, setDeleteTarget] = useState<UserWebhook | undefined>(undefined);
 
   const fetchWebhooks = async () => {
@@ -37,6 +55,11 @@ const WebhookSection = () => {
     setWebhooks(webhooks);
     setIsCreateWebhookDialogOpen(false);
     toast.success(t("setting.webhook.create-dialog.create-webhook-success", { name }));
+  };
+
+  const handleEditWebhookDialogConfirm = async () => {
+    setWebhooks(await fetchWebhooks());
+    setEditTargetName(undefined);
   };
 
   const handleDeleteWebhook = (webhook: UserWebhook) => {
@@ -78,9 +101,17 @@ const WebhookSection = () => {
             key: "url",
             header: t("setting.webhook.url"),
             render: (_, webhook: UserWebhook) => (
-              <span className="max-w-[300px] inline-block truncate text-foreground" title={webhook.url}>
-                {webhook.url}
-              </span>
+              <div className="flex flex-col gap-0.5 max-w-[300px]">
+                <span className="inline-block truncate text-foreground" title={webhook.url}>
+                  {webhook.url}
+                </span>
+                <span
+                  className="inline-block truncate text-xs text-muted-foreground"
+                  title={summarizeFilter(webhook, t("setting.webhook.filter-summary-all-events"))}
+                >
+                  {summarizeFilter(webhook, t("setting.webhook.filter-summary-all-events"))}
+                </span>
+              </div>
             ),
           },
           {
@@ -88,9 +119,14 @@ const WebhookSection = () => {
             header: "",
             className: "text-right",
             render: (_, webhook: UserWebhook) => (
-              <Button variant="ghost" size="sm" onClick={() => handleDeleteWebhook(webhook)}>
-                <TrashIcon className="text-destructive w-4 h-auto" />
-              </Button>
+              <div className="flex items-center justify-end gap-1">
+                <Button variant="ghost" size="sm" onClick={() => setEditTargetName(webhook.name)}>
+                  <PencilIcon className="text-muted-foreground w-4 h-auto" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleDeleteWebhook(webhook)}>
+                  <TrashIcon className="text-destructive w-4 h-auto" />
+                </Button>
+              </div>
             ),
           },
         ]}
@@ -104,6 +140,15 @@ const WebhookSection = () => {
         onOpenChange={setIsCreateWebhookDialogOpen}
         onSuccess={handleCreateWebhookDialogConfirm}
       />
+      {editTargetName && (
+        <CreateWebhookDialog
+          key={editTargetName}
+          open
+          webhookName={editTargetName}
+          onOpenChange={(open) => !open && setEditTargetName(undefined)}
+          onSuccess={handleEditWebhookDialogConfirm}
+        />
+      )}
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(undefined)}
