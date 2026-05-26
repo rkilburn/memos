@@ -1045,13 +1045,19 @@ func (s *APIV1Service) CreateUserWebhook(ctx context.Context, request *v1pb.Crea
 	if err := webhook.ValidateURL(strings.TrimSpace(request.Webhook.Url)); err != nil {
 		return nil, err
 	}
+	memoFilter := strings.TrimSpace(request.Webhook.MemoFilter)
+	if memoFilter != "" {
+		if err := s.validateFilter(ctx, memoFilter); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid webhook memo_filter: %v", err)
+		}
+	}
 
 	webhookID := generateUserWebhookID()
 	webhook := &storepb.WebhooksUserSetting_Webhook{
-		Id:     webhookID,
-		Title:  request.Webhook.DisplayName,
-		Url:    strings.TrimSpace(request.Webhook.Url),
-		Filter: convertUserWebhookFilterToStore(request.Webhook.Filter),
+		Id:         webhookID,
+		Title:      request.Webhook.DisplayName,
+		Url:        strings.TrimSpace(request.Webhook.Url),
+		MemoFilter: memoFilter,
 	}
 
 	err = s.Store.AddUserWebhook(ctx, userID, webhook)
@@ -1105,10 +1111,21 @@ func (s *APIV1Service) UpdateUserWebhook(ctx context.Context, request *v1pb.Upda
 
 	// Update the webhook
 	updatedWebhook := &storepb.WebhooksUserSetting_Webhook{
-		Id:     webhookID,
-		Title:  targetWebhook.Title,
-		Url:    targetWebhook.Url,
-		Filter: targetWebhook.Filter,
+		Id:         webhookID,
+		Title:      targetWebhook.Title,
+		Url:        targetWebhook.Url,
+		MemoFilter: targetWebhook.MemoFilter,
+	}
+
+	applyMemoFilter := func(raw string) error {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed != "" {
+			if err := s.validateFilter(ctx, trimmed); err != nil {
+				return status.Errorf(codes.InvalidArgument, "invalid webhook memo_filter: %v", err)
+			}
+		}
+		updatedWebhook.MemoFilter = trimmed
+		return nil
 	}
 
 	if request.UpdateMask != nil {
@@ -1124,8 +1141,10 @@ func (s *APIV1Service) UpdateUserWebhook(ctx context.Context, request *v1pb.Upda
 				}
 			case "display_name":
 				updatedWebhook.Title = request.Webhook.DisplayName
-			case "filter":
-				updatedWebhook.Filter = convertUserWebhookFilterToStore(request.Webhook.Filter)
+			case "memo_filter":
+				if err := applyMemoFilter(request.Webhook.MemoFilter); err != nil {
+					return nil, err
+				}
 			default:
 				// Ignore unsupported fields
 			}
@@ -1140,7 +1159,9 @@ func (s *APIV1Service) UpdateUserWebhook(ctx context.Context, request *v1pb.Upda
 			updatedWebhook.Url = trimmed
 		}
 		updatedWebhook.Title = request.Webhook.DisplayName
-		updatedWebhook.Filter = convertUserWebhookFilterToStore(request.Webhook.Filter)
+		if err := applyMemoFilter(request.Webhook.MemoFilter); err != nil {
+			return nil, err
+		}
 	}
 
 	err = s.Store.UpdateUserWebhook(ctx, userID, updatedWebhook)
@@ -1211,33 +1232,9 @@ func convertUserWebhookFromUserSetting(webhook *storepb.WebhooksUserSetting_Webh
 		Name:        fmt.Sprintf("%s/webhooks/%s", BuildUserName(user.Username), webhook.Id),
 		Url:         webhook.Url,
 		DisplayName: webhook.Title,
-		Filter:      convertUserWebhookFilterFromStore(webhook.Filter),
+		MemoFilter:  webhook.MemoFilter,
 		// Note: create_time and update_time are not available in the user setting webhook structure
 		// This is a limitation of storing webhooks in user settings vs the dedicated webhook table
-	}
-}
-
-// convertUserWebhookFilterToStore converts an API filter into its store equivalent.
-func convertUserWebhookFilterToStore(filter *v1pb.UserWebhook_Filter) *storepb.WebhooksUserSetting_Webhook_Filter {
-	if filter == nil {
-		return nil
-	}
-	return &storepb.WebhooksUserSetting_Webhook_Filter{
-		ActivityTypes: filter.ActivityTypes,
-		Visibilities:  filter.Visibilities,
-		Tags:          filter.Tags,
-	}
-}
-
-// convertUserWebhookFilterFromStore converts a store filter into its API equivalent.
-func convertUserWebhookFilterFromStore(filter *storepb.WebhooksUserSetting_Webhook_Filter) *v1pb.UserWebhook_Filter {
-	if filter == nil {
-		return nil
-	}
-	return &v1pb.UserWebhook_Filter{
-		ActivityTypes: filter.ActivityTypes,
-		Visibilities:  filter.Visibilities,
-		Tags:          filter.Tags,
 	}
 }
 

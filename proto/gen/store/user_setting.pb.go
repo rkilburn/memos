@@ -791,9 +791,10 @@ type WebhooksUserSetting_Webhook struct {
 	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
 	// The webhook URL endpoint
 	Url string `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
-	// Optional filter restricting which events trigger this webhook.
-	// When unset or empty, the webhook fires for every event.
-	Filter        *WebhooksUserSetting_Webhook_Filter `protobuf:"bytes,4,opt,name=filter,proto3" json:"filter,omitempty"`
+	// Optional CEL expression evaluated against the memo, using the same schema
+	// as ListMemos / Shortcut.filter (e.g. `visibility == "PUBLIC" && "work" in tags`).
+	// Empty means no memo-shape constraint; the webhook fires for every event.
+	MemoFilter    string `protobuf:"bytes,4,opt,name=memo_filter,json=memoFilter,proto3" json:"memo_filter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -849,80 +850,11 @@ func (x *WebhooksUserSetting_Webhook) GetUrl() string {
 	return ""
 }
 
-func (x *WebhooksUserSetting_Webhook) GetFilter() *WebhooksUserSetting_Webhook_Filter {
+func (x *WebhooksUserSetting_Webhook) GetMemoFilter() string {
 	if x != nil {
-		return x.Filter
+		return x.MemoFilter
 	}
-	return nil
-}
-
-type WebhooksUserSetting_Webhook_Filter struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Activity types this webhook subscribes to.
-	// Allowed values: "memos.memo.created", "memos.memo.updated",
-	// "memos.memo.deleted", "memos.memo.comment.created".
-	// Empty means all activity types.
-	ActivityTypes []string `protobuf:"bytes,1,rep,name=activity_types,json=activityTypes,proto3" json:"activity_types,omitempty"`
-	// Memo visibilities this webhook subscribes to.
-	// Allowed values: "PUBLIC", "PROTECTED", "PRIVATE".
-	// Empty means all visibilities.
-	Visibilities []string `protobuf:"bytes,2,rep,name=visibilities,proto3" json:"visibilities,omitempty"`
-	// Tags this webhook subscribes to. The webhook fires when at least one
-	// of these tags is present on the memo. Empty means no tag constraint.
-	Tags          []string `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *WebhooksUserSetting_Webhook_Filter) Reset() {
-	*x = WebhooksUserSetting_Webhook_Filter{}
-	mi := &file_store_user_setting_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *WebhooksUserSetting_Webhook_Filter) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*WebhooksUserSetting_Webhook_Filter) ProtoMessage() {}
-
-func (x *WebhooksUserSetting_Webhook_Filter) ProtoReflect() protoreflect.Message {
-	mi := &file_store_user_setting_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use WebhooksUserSetting_Webhook_Filter.ProtoReflect.Descriptor instead.
-func (*WebhooksUserSetting_Webhook_Filter) Descriptor() ([]byte, []int) {
-	return file_store_user_setting_proto_rawDescGZIP(), []int{5, 0, 0}
-}
-
-func (x *WebhooksUserSetting_Webhook_Filter) GetActivityTypes() []string {
-	if x != nil {
-		return x.ActivityTypes
-	}
-	return nil
-}
-
-func (x *WebhooksUserSetting_Webhook_Filter) GetVisibilities() []string {
-	if x != nil {
-		return x.Visibilities
-	}
-	return nil
-}
-
-func (x *WebhooksUserSetting_Webhook_Filter) GetTags() []string {
-	if x != nil {
-		return x.Tags
-	}
-	return nil
+	return ""
 }
 
 var File_store_user_setting_proto protoreflect.FileDescriptor
@@ -989,18 +921,15 @@ const file_store_user_setting_proto_rawDesc = "" +
 	"\bShortcut\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x16\n" +
-	"\x06filter\x18\x03 \x01(\tR\x06filter\"\xd1\x02\n" +
+	"\x06filter\x18\x03 \x01(\tR\x06filter\"\xbf\x01\n" +
 	"\x13WebhooksUserSetting\x12D\n" +
-	"\bwebhooks\x18\x01 \x03(\v2(.memos.store.WebhooksUserSetting.WebhookR\bwebhooks\x1a\xf3\x01\n" +
+	"\bwebhooks\x18\x01 \x03(\v2(.memos.store.WebhooksUserSetting.WebhookR\bwebhooks\x1ab\n" +
 	"\aWebhook\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x10\n" +
-	"\x03url\x18\x03 \x01(\tR\x03url\x12G\n" +
-	"\x06filter\x18\x04 \x01(\v2/.memos.store.WebhooksUserSetting.Webhook.FilterR\x06filter\x1ag\n" +
-	"\x06Filter\x12%\n" +
-	"\x0eactivity_types\x18\x01 \x03(\tR\ractivityTypes\x12\"\n" +
-	"\fvisibilities\x18\x02 \x03(\tR\fvisibilities\x12\x12\n" +
-	"\x04tags\x18\x03 \x03(\tR\x04tagsB\x9b\x01\n" +
+	"\x03url\x18\x03 \x01(\tR\x03url\x12\x1f\n" +
+	"\vmemo_filter\x18\x04 \x01(\tR\n" +
+	"memoFilterB\x9b\x01\n" +
 	"\x0fcom.memos.storeB\x10UserSettingProtoP\x01Z)github.com/usememos/memos/proto/gen/store\xa2\x02\x03MSX\xaa\x02\vMemos.Store\xca\x02\vMemos\\Store\xe2\x02\x17Memos\\Store\\GPBMetadata\xea\x02\fMemos::Storeb\x06proto3"
 
 var (
@@ -1016,7 +945,7 @@ func file_store_user_setting_proto_rawDescGZIP() []byte {
 }
 
 var file_store_user_setting_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_store_user_setting_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_store_user_setting_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_store_user_setting_proto_goTypes = []any{
 	(UserSetting_Key)(0),                                        // 0: memos.store.UserSetting.Key
 	(*UserSetting)(nil),                                         // 1: memos.store.UserSetting
@@ -1030,8 +959,7 @@ var file_store_user_setting_proto_goTypes = []any{
 	(*PersonalAccessTokensUserSetting_PersonalAccessToken)(nil), // 9: memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken
 	(*ShortcutsUserSetting_Shortcut)(nil),                       // 10: memos.store.ShortcutsUserSetting.Shortcut
 	(*WebhooksUserSetting_Webhook)(nil),                         // 11: memos.store.WebhooksUserSetting.Webhook
-	(*WebhooksUserSetting_Webhook_Filter)(nil),                  // 12: memos.store.WebhooksUserSetting.Webhook.Filter
-	(*timestamppb.Timestamp)(nil),                               // 13: google.protobuf.Timestamp
+	(*timestamppb.Timestamp)(nil),                               // 12: google.protobuf.Timestamp
 }
 var file_store_user_setting_proto_depIdxs = []int32{
 	0,  // 0: memos.store.UserSetting.key:type_name -> memos.store.UserSetting.Key
@@ -1044,18 +972,17 @@ var file_store_user_setting_proto_depIdxs = []int32{
 	9,  // 7: memos.store.PersonalAccessTokensUserSetting.tokens:type_name -> memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken
 	10, // 8: memos.store.ShortcutsUserSetting.shortcuts:type_name -> memos.store.ShortcutsUserSetting.Shortcut
 	11, // 9: memos.store.WebhooksUserSetting.webhooks:type_name -> memos.store.WebhooksUserSetting.Webhook
-	13, // 10: memos.store.RefreshTokensUserSetting.RefreshToken.expires_at:type_name -> google.protobuf.Timestamp
-	13, // 11: memos.store.RefreshTokensUserSetting.RefreshToken.created_at:type_name -> google.protobuf.Timestamp
+	12, // 10: memos.store.RefreshTokensUserSetting.RefreshToken.expires_at:type_name -> google.protobuf.Timestamp
+	12, // 11: memos.store.RefreshTokensUserSetting.RefreshToken.created_at:type_name -> google.protobuf.Timestamp
 	8,  // 12: memos.store.RefreshTokensUserSetting.RefreshToken.client_info:type_name -> memos.store.RefreshTokensUserSetting.ClientInfo
-	13, // 13: memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken.expires_at:type_name -> google.protobuf.Timestamp
-	13, // 14: memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken.created_at:type_name -> google.protobuf.Timestamp
-	13, // 15: memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken.last_used_at:type_name -> google.protobuf.Timestamp
-	12, // 16: memos.store.WebhooksUserSetting.Webhook.filter:type_name -> memos.store.WebhooksUserSetting.Webhook.Filter
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	12, // 13: memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken.expires_at:type_name -> google.protobuf.Timestamp
+	12, // 14: memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken.created_at:type_name -> google.protobuf.Timestamp
+	12, // 15: memos.store.PersonalAccessTokensUserSetting.PersonalAccessToken.last_used_at:type_name -> google.protobuf.Timestamp
+	16, // [16:16] is the sub-list for method output_type
+	16, // [16:16] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_store_user_setting_proto_init() }
@@ -1076,7 +1003,7 @@ func file_store_user_setting_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_store_user_setting_proto_rawDesc), len(file_store_user_setting_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   12,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

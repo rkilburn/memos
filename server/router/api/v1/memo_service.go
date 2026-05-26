@@ -5,7 +5,6 @@ import (
 	stderrors "errors"
 	"fmt"
 	"log/slog"
-	"slices"
 	"strings"
 	"time"
 
@@ -934,7 +933,15 @@ func (s *APIV1Service) DispatchMemoCommentCreatedWebhook(ctx context.Context, co
 	}
 	const activityType = "memos.memo.comment.created"
 	for _, hook := range webhooks {
-		if !webhookMatchesFilter(hook.Filter, activityType, commentMemo) {
+		matched, err := s.webhookMemoFilterMatches(ctx, hook.MemoFilter, commentMemo)
+		if err != nil {
+			slog.Warn("Skipping webhook because filter evaluation failed",
+				slog.String("url", hook.Url),
+				slog.String("activityType", activityType),
+				slog.Any("err", err))
+			continue
+		}
+		if !matched {
 			continue
 		}
 		payload, err := convertMemoToWebhookPayload(commentMemo)
@@ -962,7 +969,15 @@ func (s *APIV1Service) dispatchMemoRelatedWebhook(ctx context.Context, memo *v1p
 		return err
 	}
 	for _, hook := range webhooks {
-		if !webhookMatchesFilter(hook.Filter, activityType, memo) {
+		matched, err := s.webhookMemoFilterMatches(ctx, hook.MemoFilter, memo)
+		if err != nil {
+			slog.Warn("Skipping webhook because filter evaluation failed",
+				slog.String("url", hook.Url),
+				slog.String("activityType", activityType),
+				slog.Any("err", err))
+			continue
+		}
+		if !matched {
 			continue
 		}
 		payload, err := convertMemoToWebhookPayload(memo)
@@ -978,40 +993,28 @@ func (s *APIV1Service) dispatchMemoRelatedWebhook(ctx context.Context, memo *v1p
 	return nil
 }
 
-// webhookMatchesFilter reports whether a webhook should fire for the given event.
-// An unset filter (or unset/empty dimension within the filter) is treated as
-// "no constraint" on that dimension.
-func webhookMatchesFilter(filter *storepb.WebhooksUserSetting_Webhook_Filter, activityType string, memo *v1pb.Memo) bool {
-	if filter == nil {
-		return true
+// webhookMemoFilterMatches reports whether a webhook's memo CEL filter matches
+// the given memo. An empty filter is treated as "no constraint". The filter is
+// evaluated by re-querying the memo through the store's CEL pipeline, so it
+// shares schema and semantics with ListMemos / Shortcut.filter.
+func (s *APIV1Service) webhookMemoFilterMatches(ctx context.Context, memoFilter string, memo *v1pb.Memo) (bool, error) {
+	if memoFilter == "" {
+		return true, nil
 	}
-	if len(filter.ActivityTypes) > 0 && !slices.Contains(filter.ActivityTypes, activityType) {
-		return false
+	memoUID, err := ExtractMemoUIDFromName(memo.Name)
+	if err != nil {
+		return false, errors.Wrap(err, "invalid memo name")
 	}
-	if len(filter.Visibilities) > 0 {
-		visibility := ""
-		if memo != nil {
-			visibility = memo.Visibility.String()
-		}
-		if !slices.Contains(filter.Visibilities, visibility) {
-			return false
-		}
+	limit := 1
+	rows, err := s.Store.ListMemos(ctx, &store.FindMemo{
+		UID:     &memoUID,
+		Filters: []string{memoFilter},
+		Limit:   &limit,
+	})
+	if err != nil {
+		return false, errors.Wrap(err, "failed to evaluate webhook filter")
 	}
-	if len(filter.Tags) > 0 {
-		matched := false
-		if memo != nil {
-			for _, t := range memo.Tags {
-				if slices.Contains(filter.Tags, t) {
-					matched = true
-					break
-				}
-			}
-		}
-		if !matched {
-			return false
-		}
-	}
-	return true
+	return len(rows) > 0, nil
 }
 
 func convertMemoToWebhookPayload(memo *v1pb.Memo) (*webhook.WebhookRequestPayload, error) {

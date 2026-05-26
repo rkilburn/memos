@@ -3944,40 +3944,13 @@ components:
                     type: string
                     description: The last update time of the webhook.
                     format: date-time
-                filter:
-                    allOf:
-                        - $ref: '#/components/schemas/UserWebhook_Filter'
+                memoFilter:
+                    type: string
                     description: |-
-                        Optional. Filter restricting which events trigger this webhook.
-                         When unset or empty, the webhook fires for every event.
+                        Optional. CEL expression evaluated against the memo, using the same schema
+                         as ListMemos / Shortcut.filter (e.g. `visibility == "PUBLIC" && "work" in tags`).
+                         Empty means no memo-shape constraint; the webhook fires for every event.
             description: UserWebhook represents a webhook owned by a user.
-        UserWebhook_Filter:
-            type: object
-            properties:
-                activityTypes:
-                    type: array
-                    items:
-                        type: string
-                    description: |-
-                        Activity types this webhook subscribes to.
-                         Allowed values: "memos.memo.created", "memos.memo.updated",
-                         "memos.memo.deleted", "memos.memo.comment.created".
-                         Empty means all activity types.
-                visibilities:
-                    type: array
-                    items:
-                        type: string
-                    description: |-
-                        Memo visibilities this webhook subscribes to.
-                         Allowed values: "PUBLIC", "PROTECTED", "PRIVATE".
-                         Empty means all visibilities.
-                tags:
-                    type: array
-                    items:
-                        type: string
-                    description: |-
-                        Tags this webhook subscribes to. The webhook fires when at least one
-                         of these tags is present on the memo. Empty means no tag constraint.
 tags:
     - name: AIService
     - name: AttachmentService

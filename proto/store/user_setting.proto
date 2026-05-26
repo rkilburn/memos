@@ -108,24 +108,10 @@ message WebhooksUserSetting {
     string title = 2;
     // The webhook URL endpoint
     string url = 3;
-    // Optional filter restricting which events trigger this webhook.
-    // When unset or empty, the webhook fires for every event.
-    Filter filter = 4;
-
-    message Filter {
-      // Activity types this webhook subscribes to.
-      // Allowed values: "memos.memo.created", "memos.memo.updated",
-      // "memos.memo.deleted", "memos.memo.comment.created".
-      // Empty means all activity types.
-      repeated string activity_types = 1;
-      // Memo visibilities this webhook subscribes to.
-      // Allowed values: "PUBLIC", "PROTECTED", "PRIVATE".
-      // Empty means all visibilities.
-      repeated string visibilities = 2;
-      // Tags this webhook subscribes to. The webhook fires when at least one
-      // of these tags is present on the memo. Empty means no tag constraint.
-      repeated string tags = 3;
-    }
+    // Optional CEL expression evaluated against the memo, using the same schema
+    // as ListMemos / Shortcut.filter (e.g. `visibility == "PUBLIC" && "work" in tags`).
+    // Empty means no memo-shape constraint; the webhook fires for every event.
+    string memo_filter = 4;
   }
   repeated Webhook webhooks = 1;
 }

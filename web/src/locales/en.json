@@ -734,19 +734,16 @@
         "payload-url": "Payload URL",
         "title": "Title",
         "url-example-post-receive": "https://example.com/postreceive",
-        "filter": "Filter",
-        "filter-activity-types": "Activity types",
-        "filter-visibility": "Visibility",
-        "filter-tags": "Tags",
-        "filter-tags-placeholder": "tag1, tag2",
-        "filter-leave-empty-for-all": "Leave a section empty to match everything"
+        "memo-filter": "Memo filter",
+        "memo-filter-help": "CEL expression matched against the memo (same syntax as the memo search bar). Leave empty to fire for every memo.",
+        "memo-filter-placeholder": "visibility == \"PUBLIC\" && \"work\" in tags"
       },
       "delete-dialog": {
         "delete-webhook-description": "This action is irreversible.",
         "delete-webhook-success": "Webhook `{{name}}` deleted successfully",
         "delete-webhook-title": "Are you sure you want to delete webhook `{{name}}`?"
       },
-      "filter-summary-all-events": "All events",
+      "filter-summary-all-memos": "All memos",
       "no-webhooks-found": "No webhooks found.",
       "title": "Webhooks",
       "url": "URL",

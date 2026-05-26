@@ -3,10 +3,10 @@ import { FieldMaskSchema } from "@bufbuild/protobuf/wkt";
 import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { userServiceClient } from "@/connect";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import useLoading from "@/hooks/useLoading";
@@ -20,23 +20,11 @@ interface Props {
   onSuccess?: () => void;
 }
 
-const ACTIVITY_TYPES = ["memos.memo.created", "memos.memo.updated", "memos.memo.deleted", "memos.memo.comment.created"] as const;
-
-const VISIBILITIES = ["PUBLIC", "PROTECTED", "PRIVATE"] as const;
-
 interface State {
   displayName: string;
   url: string;
-  activityTypes: string[];
-  visibilities: string[];
-  tagsInput: string;
+  memoFilter: string;
 }
-
-const splitTags = (raw: string): string[] =>
-  raw
-    .split(/[,\s]+/)
-    .map((t) => t.trim().replace(/^#/, ""))
-    .filter(Boolean);
 
 function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Props) {
   const t = useTranslate();
@@ -44,9 +32,7 @@ function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Pro
   const [state, setState] = useState<State>({
     displayName: "",
     url: "",
-    activityTypes: [],
-    visibilities: [],
-    tagsInput: "",
+    memoFilter: "",
   });
   const requestState = useLoading(false);
   const isCreating = webhookName === undefined;
@@ -63,9 +49,7 @@ function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Pro
             setState({
               displayName: webhook.displayName,
               url: webhook.url,
-              activityTypes: webhook.filter?.activityTypes ?? [],
-              visibilities: webhook.filter?.visibilities ?? [],
-              tagsInput: (webhook.filter?.tags ?? []).join(", "),
+              memoFilter: webhook.memoFilter,
             });
           }
         });
@@ -78,9 +62,6 @@ function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Pro
       ...partialState,
     });
   };
-
-  const toggleInList = (list: string[], value: string): string[] =>
-    list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 
   const handleTitleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPartialState({ displayName: e.target.value });
@@ -101,11 +82,7 @@ function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Pro
       return;
     }
 
-    const filter = {
-      activityTypes: state.activityTypes,
-      visibilities: state.visibilities,
-      tags: splitTags(state.tagsInput),
-    };
+    const memoFilter = state.memoFilter.trim();
 
     try {
       requestState.setLoading();
@@ -115,7 +92,7 @@ function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Pro
           webhook: {
             displayName: state.displayName,
             url: state.url,
-            filter,
+            memoFilter,
           },
         });
       } else {
@@ -124,9 +101,9 @@ function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Pro
             name: webhookName,
             displayName: state.displayName,
             url: state.url,
-            filter,
+            memoFilter,
           },
-          updateMask: create(FieldMaskSchema, { paths: ["display_name", "url", "filter"] }),
+          updateMask: create(FieldMaskSchema, { paths: ["display_name", "url", "memo_filter"] }),
         });
       }
 
@@ -174,55 +151,17 @@ function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Pro
               onChange={handleUrlInputChange}
             />
           </div>
-          <div className="grid gap-3 border-t pt-4">
-            <div className="flex items-baseline justify-between">
-              <Label>{t("setting.webhook.create-dialog.filter")}</Label>
-              <span className="text-xs text-muted-foreground">{t("setting.webhook.create-dialog.filter-leave-empty-for-all")}</span>
-            </div>
-            <div className="grid gap-2">
-              <Label className="text-xs font-medium text-muted-foreground">
-                {t("setting.webhook.create-dialog.filter-activity-types")}
-              </Label>
-              <div className="grid grid-cols-2 gap-2">
-                {ACTIVITY_TYPES.map((activityType) => (
-                  <label key={activityType} className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={state.activityTypes.includes(activityType)}
-                      onCheckedChange={() => setPartialState({ activityTypes: toggleInList(state.activityTypes, activityType) })}
-                    />
-                    <span className="truncate" title={activityType}>
-                      {activityType.replace("memos.memo.", "")}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label className="text-xs font-medium text-muted-foreground">{t("setting.webhook.create-dialog.filter-visibility")}</Label>
-              <div className="flex flex-wrap gap-3">
-                {VISIBILITIES.map((visibility) => (
-                  <label key={visibility} className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={state.visibilities.includes(visibility)}
-                      onCheckedChange={() => setPartialState({ visibilities: toggleInList(state.visibilities, visibility) })}
-                    />
-                    <span>{visibility}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="filter-tags" className="text-xs font-medium text-muted-foreground">
-                {t("setting.webhook.create-dialog.filter-tags")}
-              </Label>
-              <Input
-                id="filter-tags"
-                type="text"
-                placeholder={t("setting.webhook.create-dialog.filter-tags-placeholder")}
-                value={state.tagsInput}
-                onChange={(e) => setPartialState({ tagsInput: e.target.value })}
-              />
-            </div>
+          <div className="grid gap-2">
+            <Label htmlFor="memoFilter">{t("setting.webhook.create-dialog.memo-filter")}</Label>
+            <Textarea
+              id="memoFilter"
+              rows={2}
+              placeholder={t("setting.webhook.create-dialog.memo-filter-placeholder")}
+              value={state.memoFilter}
+              onChange={(e) => setPartialState({ memoFilter: e.target.value })}
+              className="font-mono text-sm"
+            />
+            <span className="text-xs text-muted-foreground">{t("setting.webhook.create-dialog.memo-filter-help")}</span>
           </div>
         </div>
         <DialogFooter>

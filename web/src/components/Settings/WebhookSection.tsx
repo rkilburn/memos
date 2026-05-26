@@ -12,21 +12,9 @@ import LearnMore from "../LearnMore";
 import SettingSection from "./SettingSection";
 import SettingTable from "./SettingTable";
 
-const summarizeFilter = (webhook: UserWebhook, allEventsLabel: string): string => {
-  const parts: string[] = [];
-  const activityTypes = webhook.filter?.activityTypes ?? [];
-  const visibilities = webhook.filter?.visibilities ?? [];
-  const tags = webhook.filter?.tags ?? [];
-  if (activityTypes.length > 0) {
-    parts.push(activityTypes.map((a) => a.replace("memos.memo.", "")).join(", "));
-  }
-  if (visibilities.length > 0) {
-    parts.push(visibilities.join(", "));
-  }
-  if (tags.length > 0) {
-    parts.push(tags.map((tag) => `#${tag}`).join(", "));
-  }
-  return parts.length === 0 ? allEventsLabel : parts.join(" · ");
+const summarizeFilter = (webhook: UserWebhook, allMemosLabel: string): string => {
+  const memoFilter = webhook.memoFilter?.trim();
+  return memoFilter ? memoFilter : allMemosLabel;
 };
 
 const WebhookSection = () => {
@@ -107,9 +95,9 @@ const WebhookSection = () => {
                 </span>
                 <span
                   className="inline-block truncate text-xs text-muted-foreground"
-                  title={summarizeFilter(webhook, t("setting.webhook.filter-summary-all-events"))}
+                  title={summarizeFilter(webhook, t("setting.webhook.filter-summary-all-memos"))}
                 >
-                  {summarizeFilter(webhook, t("setting.webhook.filter-summary-all-events"))}
+                  {summarizeFilter(webhook, t("setting.webhook.filter-summary-all-memos"))}
                 </span>
               </div>
             ),
