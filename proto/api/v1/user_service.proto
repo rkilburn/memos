@@ -690,6 +690,11 @@ message UserWebhook {
 
   // The last update time of the webhook.
   google.protobuf.Timestamp update_time = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Optional. CEL expression evaluated against the memo, using the same schema
+  // as ListMemos / Shortcut.filter (e.g. `visibility == "PUBLIC" && "work" in tags`).
+  // Empty means no memo-shape constraint; the webhook fires for every event.
+  string memo_filter = 6;
 }
 
 message ListUserWebhooksRequest {

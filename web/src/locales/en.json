@@ -733,13 +733,17 @@
         "edit-webhook": "Edit webhook",
         "payload-url": "Payload URL",
         "title": "Title",
-        "url-example-post-receive": "https://example.com/postreceive"
+        "url-example-post-receive": "https://example.com/postreceive",
+        "memo-filter": "Memo filter",
+        "memo-filter-help": "CEL expression matched against the memo (same syntax as the memo search bar). Leave empty to fire for every memo.",
+        "memo-filter-placeholder": "visibility == \"PUBLIC\" && \"work\" in tags"
       },
       "delete-dialog": {
         "delete-webhook-description": "This action is irreversible.",
         "delete-webhook-success": "Webhook `{{name}}` deleted successfully",
         "delete-webhook-title": "Are you sure you want to delete webhook `{{name}}`?"
       },
+      "filter-summary-all-memos": "All memos",
       "no-webhooks-found": "No webhooks found.",
       "title": "Webhooks",
       "url": "URL",

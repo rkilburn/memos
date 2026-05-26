@@ -3944,6 +3944,12 @@ components:
                     type: string
                     description: The last update time of the webhook.
                     format: date-time
+                memoFilter:
+                    type: string
+                    description: |-
+                        Optional. CEL expression evaluated against the memo, using the same schema
+                         as ListMemos / Shortcut.filter (e.g. `visibility == "PUBLIC" && "work" in tags`).
+                         Empty means no memo-shape constraint; the webhook fires for every event.
             description: UserWebhook represents a webhook owned by a user.
 tags:
     - name: AIService

@@ -910,19 +910,27 @@ func (s *APIV1Service) getContentLengthLimit(ctx context.Context) (int, error) {
 	return int(instanceMemoRelatedSetting.ContentLengthLimit), nil
 }
 
+// Webhook activity type strings sent in the dispatched payload.
+const (
+	activityTypeMemoCreated        = "memos.memo.created"
+	activityTypeMemoUpdated        = "memos.memo.updated"
+	activityTypeMemoDeleted        = "memos.memo.deleted"
+	activityTypeMemoCommentCreated = "memos.memo.comment.created"
+)
+
 // DispatchMemoCreatedWebhook dispatches webhook when memo is created.
 func (s *APIV1Service) DispatchMemoCreatedWebhook(ctx context.Context, memo *v1pb.Memo) error {
-	return s.dispatchMemoRelatedWebhook(ctx, memo, "memos.memo.created")
+	return s.dispatchMemoRelatedWebhook(ctx, memo, activityTypeMemoCreated)
 }
 
 // DispatchMemoUpdatedWebhook dispatches webhook when memo is updated.
 func (s *APIV1Service) DispatchMemoUpdatedWebhook(ctx context.Context, memo *v1pb.Memo) error {
-	return s.dispatchMemoRelatedWebhook(ctx, memo, "memos.memo.updated")
+	return s.dispatchMemoRelatedWebhook(ctx, memo, activityTypeMemoUpdated)
 }
 
 // DispatchMemoDeletedWebhook dispatches webhook when memo is deleted.
 func (s *APIV1Service) DispatchMemoDeletedWebhook(ctx context.Context, memo *v1pb.Memo) error {
-	return s.dispatchMemoRelatedWebhook(ctx, memo, "memos.memo.deleted")
+	return s.dispatchMemoRelatedWebhook(ctx, memo, activityTypeMemoDeleted)
 }
 
 // DispatchMemoCommentCreatedWebhook dispatches webhook to the related memo owner when a comment is created.
@@ -932,11 +940,22 @@ func (s *APIV1Service) DispatchMemoCommentCreatedWebhook(ctx context.Context, co
 		return err
 	}
 	for _, hook := range webhooks {
+		matched, err := s.webhookMemoFilterMatches(ctx, hook.MemoFilter, commentMemo)
+		if err != nil {
+			slog.Warn("Skipping webhook because filter evaluation failed",
+				slog.String("url", hook.Url),
+				slog.String("activityType", activityTypeMemoCommentCreated),
+				slog.Any("err", err))
+			continue
+		}
+		if !matched {
+			continue
+		}
 		payload, err := convertMemoToWebhookPayload(commentMemo)
 		if err != nil {
 			return errors.Wrap(err, "failed to convert memo to webhook payload")
 		}
-		payload.ActivityType = "memos.memo.comment.created"
+		payload.ActivityType = activityTypeMemoCommentCreated
 		payload.URL = hook.Url
 		webhook.PostAsync(payload)
 	}
@@ -957,6 +976,17 @@ func (s *APIV1Service) dispatchMemoRelatedWebhook(ctx context.Context, memo *v1p
 		return err
 	}
 	for _, hook := range webhooks {
+		matched, err := s.webhookMemoFilterMatches(ctx, hook.MemoFilter, memo)
+		if err != nil {
+			slog.Warn("Skipping webhook because filter evaluation failed",
+				slog.String("url", hook.Url),
+				slog.String("activityType", activityType),
+				slog.Any("err", err))
+			continue
+		}
+		if !matched {
+			continue
+		}
 		payload, err := convertMemoToWebhookPayload(memo)
 		if err != nil {
 			return errors.Wrap(err, "failed to convert memo to webhook payload")
@@ -968,6 +998,30 @@ func (s *APIV1Service) dispatchMemoRelatedWebhook(ctx context.Context, memo *v1p
 		webhook.PostAsync(payload)
 	}
 	return nil
+}
+
+// webhookMemoFilterMatches reports whether a webhook's memo CEL filter matches
+// the given memo. An empty filter is treated as "no constraint". The filter is
+// evaluated by re-querying the memo through the store's CEL pipeline, so it
+// shares schema and semantics with ListMemos / Shortcut.filter.
+func (s *APIV1Service) webhookMemoFilterMatches(ctx context.Context, memoFilter string, memo *v1pb.Memo) (bool, error) {
+	if memoFilter == "" {
+		return true, nil
+	}
+	memoUID, err := ExtractMemoUIDFromName(memo.Name)
+	if err != nil {
+		return false, errors.Wrap(err, "invalid memo name")
+	}
+	limit := 1
+	rows, err := s.Store.ListMemos(ctx, &store.FindMemo{
+		UID:     &memoUID,
+		Filters: []string{memoFilter},
+		Limit:   &limit,
+	})
+	if err != nil {
+		return false, errors.Wrap(err, "failed to evaluate webhook filter")
+	}
+	return len(rows) > 0, nil
 }
 
 func convertMemoToWebhookPayload(memo *v1pb.Memo) (*webhook.WebhookRequestPayload, error) {

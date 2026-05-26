@@ -108,6 +108,10 @@ message WebhooksUserSetting {
     string title = 2;
     // The webhook URL endpoint
     string url = 3;
+    // Optional CEL expression evaluated against the memo, using the same schema
+    // as ListMemos / Shortcut.filter (e.g. `visibility == "PUBLIC" && "work" in tags`).
+    // Empty means no memo-shape constraint; the webhook fires for every event.
+    string memo_filter = 4;
   }
   repeated Webhook webhooks = 1;
 }

@@ -790,7 +790,11 @@ type WebhooksUserSetting_Webhook struct {
 	// Descriptive title for the webhook
 	Title string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
 	// The webhook URL endpoint
-	Url           string `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
+	Url string `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
+	// Optional CEL expression evaluated against the memo, using the same schema
+	// as ListMemos / Shortcut.filter (e.g. `visibility == "PUBLIC" && "work" in tags`).
+	// Empty means no memo-shape constraint; the webhook fires for every event.
+	MemoFilter    string `protobuf:"bytes,4,opt,name=memo_filter,json=memoFilter,proto3" json:"memo_filter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -842,6 +846,13 @@ func (x *WebhooksUserSetting_Webhook) GetTitle() string {
 func (x *WebhooksUserSetting_Webhook) GetUrl() string {
 	if x != nil {
 		return x.Url
+	}
+	return ""
+}
+
+func (x *WebhooksUserSetting_Webhook) GetMemoFilter() string {
+	if x != nil {
+		return x.MemoFilter
 	}
 	return ""
 }
@@ -910,13 +921,15 @@ const file_store_user_setting_proto_rawDesc = "" +
 	"\bShortcut\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x16\n" +
-	"\x06filter\x18\x03 \x01(\tR\x06filter\"\x9e\x01\n" +
+	"\x06filter\x18\x03 \x01(\tR\x06filter\"\xbf\x01\n" +
 	"\x13WebhooksUserSetting\x12D\n" +
-	"\bwebhooks\x18\x01 \x03(\v2(.memos.store.WebhooksUserSetting.WebhookR\bwebhooks\x1aA\n" +
+	"\bwebhooks\x18\x01 \x03(\v2(.memos.store.WebhooksUserSetting.WebhookR\bwebhooks\x1ab\n" +
 	"\aWebhook\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x10\n" +
-	"\x03url\x18\x03 \x01(\tR\x03urlB\x9b\x01\n" +
+	"\x03url\x18\x03 \x01(\tR\x03url\x12\x1f\n" +
+	"\vmemo_filter\x18\x04 \x01(\tR\n" +
+	"memoFilterB\x9b\x01\n" +
 	"\x0fcom.memos.storeB\x10UserSettingProtoP\x01Z)github.com/usememos/memos/proto/gen/store\xa2\x02\x03MSX\xaa\x02\vMemos.Store\xca\x02\vMemos\\Store\xe2\x02\x17Memos\\Store\\GPBMetadata\xea\x02\fMemos::Storeb\x06proto3"
 
 var (

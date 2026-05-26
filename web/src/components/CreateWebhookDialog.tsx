@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { userServiceClient } from "@/connect";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import useLoading from "@/hooks/useLoading";
@@ -22,6 +23,7 @@ interface Props {
 interface State {
   displayName: string;
   url: string;
+  memoFilter: string;
 }
 
 function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Props) {
@@ -30,14 +32,13 @@ function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Pro
   const [state, setState] = useState<State>({
     displayName: "",
     url: "",
+    memoFilter: "",
   });
   const requestState = useLoading(false);
   const isCreating = webhookName === undefined;
 
   useEffect(() => {
     if (webhookName && currentUser) {
-      // For editing, we need to get the webhook data
-      // Since we're using user webhooks now, we need to list all webhooks and find the one we want
       userServiceClient
         .listUserWebhooks({
           parent: currentUser.name,
@@ -48,6 +49,7 @@ function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Pro
             setState({
               displayName: webhook.displayName,
               url: webhook.url,
+              memoFilter: webhook.memoFilter,
             });
           }
         });
@@ -62,15 +64,11 @@ function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Pro
   };
 
   const handleTitleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPartialState({
-      displayName: e.target.value,
-    });
+    setPartialState({ displayName: e.target.value });
   };
 
   const handleUrlInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPartialState({
-      url: e.target.value,
-    });
+    setPartialState({ url: e.target.value });
   };
 
   const handleSaveBtnClick = async () => {
@@ -84,6 +82,8 @@ function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Pro
       return;
     }
 
+    const memoFilter = state.memoFilter.trim();
+
     try {
       requestState.setLoading();
       if (isCreating) {
@@ -92,6 +92,7 @@ function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Pro
           webhook: {
             displayName: state.displayName,
             url: state.url,
+            memoFilter,
           },
         });
       } else {
@@ -100,8 +101,9 @@ function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Pro
             name: webhookName,
             displayName: state.displayName,
             url: state.url,
+            memoFilter,
           },
-          updateMask: create(FieldMaskSchema, { paths: ["display_name", "url"] }),
+          updateMask: create(FieldMaskSchema, { paths: ["display_name", "url", "memo_filter"] }),
         });
       }
 
@@ -149,13 +151,25 @@ function CreateWebhookDialog({ open, onOpenChange, webhookName, onSuccess }: Pro
               onChange={handleUrlInputChange}
             />
           </div>
+          <div className="grid gap-2">
+            <Label htmlFor="memoFilter">{t("setting.webhook.create-dialog.memo-filter")}</Label>
+            <Textarea
+              id="memoFilter"
+              rows={2}
+              placeholder={t("setting.webhook.create-dialog.memo-filter-placeholder")}
+              value={state.memoFilter}
+              onChange={(e) => setPartialState({ memoFilter: e.target.value })}
+              className="font-mono text-sm"
+            />
+            <span className="text-xs text-muted-foreground">{t("setting.webhook.create-dialog.memo-filter-help")}</span>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" disabled={requestState.isLoading} onClick={() => onOpenChange(false)}>
             {t("common.cancel")}
           </Button>
           <Button disabled={requestState.isLoading} onClick={handleSaveBtnClick}>
-            {t("common.create")}
+            {isCreating ? t("common.create") : t("common.save")}
           </Button>
         </DialogFooter>
       </DialogContent>
